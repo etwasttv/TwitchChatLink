@@ -11,5 +11,6 @@ public class TwitchChatLinkClient implements ClientModInitializer {
   public void onInitializeClient() {
     ClientCommandRegistrationCallback.EVENT.register(TwitchCommand::register);
     TwitchChatEvent.EVENTS.register(new TwitchChatEventListener());
+    TwitchChatEvent.EVENTS.register(EmoteManager.getInstance());
   }
 }

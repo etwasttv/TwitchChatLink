@@ -3,6 +3,7 @@ package com.etw4s.twitchchatlink.twitch;
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.TwitchChatLinkContracts;
+import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
 import com.google.gson.Gson;
@@ -48,7 +49,8 @@ public class TwitchApi {
         });
   }
 
-  public static CompletableFuture<CreateEventSubSubscriptionResult> createChannelChatMessageSubscription(String sessionId,
+  public static CompletableFuture<CreateEventSubSubscriptionResult> createChannelChatMessageSubscription(
+      String sessionId,
       TwitchUser broadcaster) {
     TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
     var requestBody = new CreateEventSubSubscriptionRequest();
@@ -77,6 +79,31 @@ public class TwitchApi {
           return CreateEventSubSubscriptionResult.success(
               responseBody.data[0].id,
               "channel.chat.message");
+        });
+  }
+
+  public static CompletableFuture<GetEmoteSetResult> getEmoteSet(String emoteSetId) {
+    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    var request = HttpRequest.newBuilder()
+        .uri(URI.create("https://api.twitch.tv/helix/chat/emotes/set?emote_set_id=" + emoteSetId))
+        .header("Authorization", "Bearer " + config.getToken())
+        .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID)
+        .header("Content-Type", "application/json")
+        .GET()
+        .build();
+
+    return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        .thenApply(response -> {
+          if (response.statusCode() == HttpStatus.SC_OK) {
+            var body = gson.fromJson(response.body(), GetEmoteSetResponse.class);
+
+            return GetEmoteSetResult.success(
+                emoteSetId,
+                Arrays.stream(body.data)
+                    .map(d -> new TwitchEmoteInfo(d.id, d.name, d.format, d.scale, d.theme_mode, body.template))
+                    .toList());
+          }
+          return GetEmoteSetResult.fail(emoteSetId);
         });
   }
 }
