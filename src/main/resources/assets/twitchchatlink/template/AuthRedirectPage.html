@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>TwitchChatLink</title>
+  <script>
+setTimeout(() => {
+  const url = new URL(window.location.href);
+  const fragment = url.hash.substring(1);
+  window.location.href=`${url.origin}/token?${fragment}`;
+}, 1000);
+  </script>
+</head>
+<body>
+1秒後にリダイレクトされます
+</body>
+</html>

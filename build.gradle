@@ -53,16 +53,38 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
+def twitchClientId = System.getenv("TWITCH_CLIENT_ID")
+tasks.register('generateConfig') {
+    doLast {
+        assert twitchClientId != null
+
+        def outputDir = layout.buildDirectory.dir("generated/sources/com/etw4s/twitchchatlink").get().asFile
+        def outputFile = new File(outputDir, "TwitchChatLinkContracts.java")
+        outputDir.mkdirs()
+        outputFile.text = """
+package com.etw4s.twitchchatlink;
+
+public class TwitchChatLinkContracts {
+  public static final String TWITCH_CLIENT_ID = "${twitchClientId}";
+}
+"""
+    }
+}
+
 java {
     def javaVersion = JavaVersion.toVersion(targetJavaVersion)
     if (JavaVersion.current() < javaVersion) {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     }
+    sourceSets.main.java.srcDirs += layout.buildDirectory.dir("generated/sources")
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
     // if it is present.
     // If you remove this line, sources will not be generated.
     withSourcesJar()
 }
+
+compileJava.dependsOn(generateConfig)
+sourcesJar.dependsOn(compileTestJava)
 
 jar {
     from("LICENSE") {
