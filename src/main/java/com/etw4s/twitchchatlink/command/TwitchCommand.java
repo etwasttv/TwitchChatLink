@@ -1,9 +1,11 @@
 package com.etw4s.twitchchatlink.command;
 
 import com.etw4s.twitchchatlink.TwitchChatLink;
+import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
 import com.etw4s.twitchchatlink.twitch.GetUsersResult.Status;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import com.etw4s.twitchchatlink.twitch.auth.AuthManager;
+import com.etw4s.twitchchatlink.twitch.eventsub.EventSubClient;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -40,8 +42,18 @@ public class TwitchCommand {
         if (users.isEmpty()) {
           context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
         } else {
-          context.getSource()
-              .sendFeedback(Text.literal(users.getFirst().displayName() + "が見つかりました"));
+          EventSubClient.getInstance().connect(users.getFirst()).thenAccept(result -> {
+                if (result.status() == CreateEventSubSubscriptionResult.Status.Success) {
+                  context.getSource()
+                      .sendFeedback(
+                          Text.literal(users.getFirst().displayName() + "のチャットが表示されます"));
+                } else {
+                  context.getSource()
+                      .sendFeedback(Text.literal(
+                          users.getFirst().displayName() + "のチャットに接続できませんでした"));
+                }
+              }
+          );
         }
       } else {
         context.getSource().sendFeedback(Text.literal("エラーが発生しました"));

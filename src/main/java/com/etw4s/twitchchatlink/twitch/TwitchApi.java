@@ -39,13 +39,44 @@ public class TwitchApi {
         .thenApply(response -> {
           if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
             return GetUsersResult.Unauthorized();
-          }
-          else if (response.statusCode() != HttpStatus.SC_OK) {
+          } else if (response.statusCode() != HttpStatus.SC_OK) {
             return GetUsersResult.ErrorResult();
           }
           var getUsersResponse = gson.fromJson(response.body(), GetUsersResponse.class);
           return GetUsersResult.OkResult(Arrays.stream(getUsersResponse.data)
               .map(d -> new TwitchUser(d.id, d.login, d.displayName)).toList());
+        });
+  }
+
+  public static CompletableFuture<CreateEventSubSubscriptionResult> createChannelChatMessageSubscription(String sessionId,
+      TwitchUser broadcaster) {
+    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    var requestBody = new CreateEventSubSubscriptionRequest();
+    requestBody.condition = new ChannelChatMessageCondition(broadcaster.id(), config.getUserId());
+    requestBody.version = "1";
+    requestBody.type = "channel.chat.message";
+    requestBody.transport = new Transport("websocket", sessionId);
+    HttpRequest request = HttpRequest.newBuilder()
+        .uri(URI.create("https://api.twitch.tv/helix/eventsub/subscriptions"))
+        .header("Authorization", "Bearer " + config.getToken())
+        .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID)
+        .header("Content-Type", "application/json")
+        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(requestBody)))
+        .build();
+
+    return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        .thenApply(response -> {
+          if (response.statusCode() != HttpStatus.SC_ACCEPTED) {
+            return CreateEventSubSubscriptionResult.fail();
+          }
+          var responseBody = gson.fromJson(response.body(),
+              CreateEventSubSubscriptionResponse.class);
+          if (responseBody.data.length == 0) {
+            return CreateEventSubSubscriptionResult.fail();
+          }
+          return CreateEventSubSubscriptionResult.success(
+              responseBody.data[0].id,
+              "channel.chat.message");
         });
   }
 }

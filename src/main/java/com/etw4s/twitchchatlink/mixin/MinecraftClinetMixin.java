@@ -2,6 +2,7 @@ package com.etw4s.twitchchatlink.mixin;
 
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.twitch.auth.AuthManager;
+import com.etw4s.twitchchatlink.twitch.eventsub.EventSubClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.world.ClientWorld;
@@ -30,5 +31,6 @@ public class MinecraftClinetMixin {
     }
     LOGGER.info("onDisconnect");
     AuthManager.getInstance().stopAuth();
+    EventSubClient.getInstance().disconnect();
   }
 }

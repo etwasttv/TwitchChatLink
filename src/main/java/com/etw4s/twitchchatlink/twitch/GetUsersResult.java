@@ -17,7 +17,7 @@ public record GetUsersResult(Status status, List<TwitchUser> users) {
     return new GetUsersResult(Status.Error, null);
   }
 
-  public static enum Status {
+  public enum Status {
     Ok,
     Unauthorized,
     Error,
