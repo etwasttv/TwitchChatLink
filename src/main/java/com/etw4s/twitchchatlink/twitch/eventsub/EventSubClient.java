@@ -1,6 +1,7 @@
 package com.etw4s.twitchchatlink.twitch.eventsub;
 
 import com.etw4s.twitchchatlink.TwitchChatLink;
+import com.etw4s.twitchchatlink.event.TwitchChatEvent;
 import com.etw4s.twitchchatlink.model.ChatFragment;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchUser;
@@ -109,8 +110,8 @@ public class EventSubClient implements Listener {
         if (f.type.equals("emote")) return new ChatFragment(f.text, f.emote.id, f.emote.emoteSetId);
         return new ChatFragment(f.text);
       }).toList();
-      var twitchChat = new TwitchChat(broadcaster, chatter, event.message.text, fragments);
-      LOGGER.info("{}", twitchChat.getText());
+      var twitchChat = new TwitchChat(broadcaster, chatter, event.message.text, fragments, event.color);
+      TwitchChatEvent.EVENTS.invoker().onReceive(twitchChat);
     }
   }
 

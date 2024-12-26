@@ -8,12 +8,14 @@ public class TwitchChat {
   TwitchUser chatter;
   String text;
   List<ChatFragment> fragments;
+  String color;
 
-  public TwitchChat(TwitchUser broadcaster, TwitchUser chatter, String text, List<ChatFragment> fragments) {
+  public TwitchChat(TwitchUser broadcaster, TwitchUser chatter, String text, List<ChatFragment> fragments, String color) {
     this.broadcaster = broadcaster;
     this.chatter = chatter;
     this.text = text;
     this.fragments = fragments;
+    this.color = color == null ? "#a970ff" : color;
   }
 
   public TwitchUser getBroadcaster() {
@@ -30,5 +32,9 @@ public class TwitchChat {
 
   public List<ChatFragment> getFragments() {
     return fragments;
+  }
+
+  public String getColor() {
+    return color;
   }
 }
