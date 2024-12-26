@@ -39,6 +39,10 @@ public class AuthManager {
     }
   }
 
+  public void stopAuth() {
+    AuthRedirectServer.getInstance().stopRedirectServer();
+  }
+
   private void sendAuthUrl(ClientPlayerEntity player) {
     MutableText link = Text.literal("ここ")
         .setStyle(Style.EMPTY

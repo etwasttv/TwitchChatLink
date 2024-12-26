@@ -6,6 +6,7 @@
   "mixins": [
   ],
   "client": [
+    "MinecraftClinetMixin"
   ],
   "injectors": {
     "defaultRequire": 1

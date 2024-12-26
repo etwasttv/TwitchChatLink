@@ -9,12 +9,17 @@ public record GetUsersResult(Status status, List<TwitchUser> users) {
     return new GetUsersResult(Status.Ok, users);
   }
 
+  public static GetUsersResult Unauthorized() {
+    return new GetUsersResult(Status.Unauthorized, null);
+  }
+
   public static GetUsersResult ErrorResult() {
     return new GetUsersResult(Status.Error, null);
   }
 
   public static enum Status {
     Ok,
+    Unauthorized,
     Error,
   }
 }
