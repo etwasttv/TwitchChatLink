@@ -15,6 +15,7 @@ import net.minecraft.client.gui.hud.MessageIndicator;
 import net.minecraft.client.gui.hud.MessageIndicator.Icon;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.MathHelper;
@@ -94,10 +95,10 @@ public abstract class ChatHudMixin {
         int m = MathHelper.floor((float) (l - 40) / f);
         int n = this.getMessageIndex(this.toChatLineX((double) mouseX),
             this.toChatLineY((double) mouseY));
-        double d = (Double) this.client.options.getChatOpacity().getValue() * 0.8999999761581421
+        double d = this.client.options.getChatOpacity().getValue() * 0.8999999761581421
             + 0.10000000149011612;
-        double e = (Double) this.client.options.getTextBackgroundOpacity().getValue();
-        double g = (Double) this.client.options.getChatLineSpacing().getValue();
+        double e = this.client.options.getTextBackgroundOpacity().getValue();
+        double g = this.client.options.getChatLineSpacing().getValue();
         int o = this.getLineHeight();
         int p = (int) Math.round(-8.0 * (g + 1.0) + 4.0 * g);
         int q = 0;
@@ -117,7 +118,6 @@ public abstract class ChatHudMixin {
               v = (int) (255.0 * h * e);
               ++q;
               if (u > 3) {
-                boolean w = false;
                 x = m - r * o;
                 int y = x + p;
                 context.fill(-4, x - o, k + 4 + 4, x, v << 24);
@@ -150,16 +150,30 @@ public abstract class ChatHudMixin {
                 });
                 texts.add(Text.literal(builder.get().toString()).setStyle(previousStyle.get()));
                 int tailX = 0;
+                boolean isAfterEmote = false;
                 for (Text text : texts) {
-                  if (EmoteManager.getInstance().isLoaded(text.getString())) {
-                    TwitchEmote emote = EmoteManager.getInstance().getEmote(text.getString());
+                  String name = EmoteManager.getInstance().getNameByUnicode(text.getString());
+                  if (name != null) {
+                    TwitchEmote emote = EmoteManager.getInstance().getEmote(name);
                     if (emote != null) {
                       Identifier id = emote.getIdentifier();
-                      context.drawTexture(id, tailX, (int) (y - 1 - 5 * g), 0, 0, o, o, o, o);
+                      context.drawTexture(id, tailX-o/4, (int) (y - 1 - 5 * g), 0, 0, o, o, o, o);
+                      tailX += o;
+                      isAfterEmote = true;
+                    } else {
+                      tailX = context.drawTextWithShadow(client.textRenderer,
+                          Text.literal(name).setStyle(Style.EMPTY.withColor(
+                              Formatting.GRAY)), tailX, y,
+                          ColorHelper.Argb.withAlpha(u, -1));
+                      isAfterEmote = true;
                     }
-                    tailX += o - 4;
                   } else {
-                    tailX = context.drawTextWithShadow(client.textRenderer, text, tailX, y, ColorHelper.Argb.withAlpha(u, -1));
+                    var tmp = context.drawTextWithShadow(client.textRenderer, text, tailX, y,
+                        ColorHelper.Argb.withAlpha(u, -1));
+                    if (!isAfterEmote) {
+                      tailX = tmp;
+                    }
+                    isAfterEmote = false;
                   }
                 }
                 context.getMatrices().pop();
