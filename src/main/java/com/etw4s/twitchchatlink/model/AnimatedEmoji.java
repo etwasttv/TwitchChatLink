@@ -3,13 +3,13 @@ package com.etw4s.twitchchatlink.model;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.util.Identifier;
 
-public class TwitchAnimatedEmote extends TwitchEmote {
+public class AnimatedEmoji extends BaseEmoji {
 
   private final int totalFrames;
   private final AtomicInteger frame = new AtomicInteger(0);
   private int totalDelay;
 
-  public TwitchAnimatedEmote(String id, String name, int totalFrames) {
+  public AnimatedEmoji(String id, String name, int totalFrames) {
     super(id, name);
     this.totalFrames = totalFrames;
   }

@@ -2,9 +2,9 @@ package com.etw4s.twitchchatlink.model;
 
 import net.minecraft.util.Identifier;
 
-public class TwitchStaticEmote extends TwitchEmote {
+public class StaticEmoji extends BaseEmoji {
 
-  public TwitchStaticEmote(String id, String name) {
+  public StaticEmoji(String id, String name) {
     super(id, name);
   }
 

@@ -2,13 +2,13 @@ package com.etw4s.twitchchatlink.client;
 
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.event.TwitchChatEvent.TwitchChatListener;
+import com.etw4s.twitchchatlink.model.AnimatedEmoji;
 import com.etw4s.twitchchatlink.model.ChatFragment;
 import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
-import com.etw4s.twitchchatlink.model.TwitchAnimatedEmote;
 import com.etw4s.twitchchatlink.model.TwitchChat;
-import com.etw4s.twitchchatlink.model.TwitchEmote;
+import com.etw4s.twitchchatlink.model.BaseEmoji;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
-import com.etw4s.twitchchatlink.model.TwitchStaticEmote;
+import com.etw4s.twitchchatlink.model.StaticEmoji;
 import com.etw4s.twitchchatlink.twitch.GetEmoteSetResult.Status;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import java.awt.image.BufferedImage;
@@ -21,10 +21,8 @@ import java.net.URL;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -46,7 +44,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
   private static final int MAX_UNICODE = 0xF8FF;
   private int offset = 9;
   private final Map<String, String> unicodeMap = Collections.synchronizedMap(new HashMap<>());
-  private final Map<String, TwitchEmote> emotes = Collections.synchronizedMap(new HashMap<>());
+  private final Map<String, BaseEmoji> emotes = Collections.synchronizedMap(new HashMap<>());
   private long last = 0;
 
   public static EmoteManager getInstance() {
@@ -61,7 +59,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
     return unicodeMap.get(unicode);
   }
 
-  public TwitchEmote getEmoteByUnicode(String unicode) {
+  public BaseEmoji getEmoteByUnicode(String unicode) {
     var name = unicodeMap.get(unicode);
     if (name == null) {
       return null;
@@ -69,7 +67,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
     return emotes.get(name);
   }
 
-  public TwitchEmote getEmote(String name) {
+  public BaseEmoji getEmote(String name) {
     return emotes.get(name);
   }
 
@@ -129,7 +127,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
         }
         NativeImage image = NativeImage.read(input);
         NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
-        TwitchStaticEmote emote = new TwitchStaticEmote(info.id(), info.name());
+        StaticEmoji emote = new StaticEmoji(info.id(), info.name());
         MinecraftClient.getInstance().getTextureManager()
             .registerTexture(emote.getIdentifier(), texture);
         emotes.put(emote.getName(), emote);
@@ -152,7 +150,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
         ImageReader reader = readers.next();
         reader.setInput(input);
         int totalFrames = reader.getNumImages(true);
-        TwitchAnimatedEmote emote = new TwitchAnimatedEmote(info.id(), info.name(), totalFrames);
+        AnimatedEmoji emote = new AnimatedEmoji(info.id(), info.name(), totalFrames);
         int totalDelay = 0;
         for (int i = 0; i < totalFrames; i++) {
           BufferedImage frame = reader.read(i);

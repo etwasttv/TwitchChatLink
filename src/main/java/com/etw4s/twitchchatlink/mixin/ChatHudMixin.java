@@ -1,7 +1,7 @@
 package com.etw4s.twitchchatlink.mixin;
 
 import com.etw4s.twitchchatlink.client.EmoteManager;
-import com.etw4s.twitchchatlink.model.TwitchEmote;
+import com.etw4s.twitchchatlink.model.BaseEmoji;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -154,7 +154,7 @@ public abstract class ChatHudMixin {
                 for (Text text : texts) {
                   String name = EmoteManager.getInstance().getNameByUnicode(text.getString());
                   if (name != null) {
-                    TwitchEmote emote = EmoteManager.getInstance().getEmote(name);
+                    BaseEmoji emote = EmoteManager.getInstance().getEmote(name);
                     if (emote != null) {
                       Identifier id = emote.getIdentifier();
                       context.drawTexture(id, tailX-o/4, (int) (y - 1 - 5 * g), 0, 0, o, o, o, o);

@@ -5,11 +5,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Objects;
 import net.minecraft.util.Identifier;
 
-public abstract class TwitchEmote {
+public abstract class BaseEmoji {
   private final String id;
   private final String name;
 
-  protected TwitchEmote(String id, String name) {
+  protected BaseEmoji(String id, String name) {
     this.id = id;
     this.name = name;
   }
@@ -32,7 +32,7 @@ public abstract class TwitchEmote {
     if (o == null || getClass() != o.getClass()) {
       return false;
     }
-    TwitchEmote that = (TwitchEmote) o;
+    BaseEmoji that = (BaseEmoji) o;
     return Objects.equals(id, that.id);
   }
 
