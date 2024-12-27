@@ -12,7 +12,11 @@ import com.mojang.brigadier.context.CommandContext;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.Style;
 import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,7 +31,9 @@ public class TwitchCommand {
             .executes(TwitchCommand::authHandler))
         .then(ClientCommandManager.literal("connect")
             .then(ClientCommandManager.argument("login", StringArgumentType.word())
-                .executes(TwitchCommand::connectHandler))));
+                .executes(TwitchCommand::connectHandler)))
+        .then(ClientCommandManager.literal("list")
+            .executes(TwitchCommand::listHandler)));
   }
 
   private static int connectHandler(CommandContext<FabricClientCommandSource> context) {
@@ -64,6 +70,30 @@ public class TwitchCommand {
 
   private static int authHandler(CommandContext<FabricClientCommandSource> context) {
     AuthManager.getInstance().startAuth();
+    return 1;
+  }
+
+  private static int listHandler(CommandContext<FabricClientCommandSource> context) {
+    var subscribes = EventSubClient.getInstance().getSubscribeList();
+    if (subscribes.isEmpty()) {
+      var text = Text.literal("現在、接続しているチャンネルはありません");
+      context.getSource().sendFeedback(text);
+    } else {
+      var text = Text.literal("現在、以下のチャンネルに接続しています\n");
+      for (var broadcaster : subscribes) {
+        text.append(
+            Text.literal(broadcaster.displayName() + "(" + broadcaster.login() + ")").setStyle(
+                Style.EMPTY
+                    .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                        Text.literal(broadcaster.getChannelUrl())))
+                    .withClickEvent(
+                        new ClickEvent(ClickEvent.Action.OPEN_URL, broadcaster.getChannelUrl()))
+                    .withColor(Formatting.LIGHT_PURPLE)));
+        text.append(" ");
+      }
+      context.getSource().sendFeedback(text);
+    }
+
     return 1;
   }
 }
