@@ -5,6 +5,7 @@ import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.TwitchChatLinkContracts;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.model.TwitchUser;
+import com.etw4s.twitchchatlink.twitch.DeleteEventSubSubscriptionResult.Status;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
 import com.google.gson.Gson;
 import java.net.URI;
@@ -82,6 +83,30 @@ public class TwitchApi {
         });
   }
 
+  public static CompletableFuture<DeleteEventSubSubscriptionResult> deleteEventSubSubscription(
+      String subscriptionId) {
+    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    var request = HttpRequest.newBuilder()
+        .uri(URI.create("https://api.twitch.tv/helix/eventsub/subscriptions?id=" + subscriptionId))
+        .header("Authorization", "Bearer " + config.getToken())
+        .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID)
+        .DELETE()
+        .build();
+
+    return client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+        .thenApply(response -> {
+          if (response.statusCode() == HttpStatus.SC_NO_CONTENT) {
+            return new DeleteEventSubSubscriptionResult(Status.Success);
+          } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
+            return new DeleteEventSubSubscriptionResult(Status.BadRequest);
+          } else if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
+            return new DeleteEventSubSubscriptionResult(Status.Unauthorized);
+          } else {
+            return new DeleteEventSubSubscriptionResult(Status.NotFound);
+          }
+        });
+  }
+
   public static CompletableFuture<GetEmoteSetResult> getEmoteSet(String emoteSetId) {
     TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
     var request = HttpRequest.newBuilder()
@@ -100,7 +125,8 @@ public class TwitchApi {
             return GetEmoteSetResult.success(
                 emoteSetId,
                 Arrays.stream(body.data)
-                    .map(d -> new TwitchEmoteInfo(d.id, d.name, d.format, d.scale, d.theme_mode, body.template))
+                    .map(d -> new TwitchEmoteInfo(d.id, d.name, d.format, d.scale, d.theme_mode,
+                        body.template))
                     .toList());
           }
           return GetEmoteSetResult.fail(emoteSetId);

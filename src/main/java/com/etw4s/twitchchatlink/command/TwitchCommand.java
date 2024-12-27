@@ -2,6 +2,7 @@ package com.etw4s.twitchchatlink.command;
 
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
+import com.etw4s.twitchchatlink.twitch.DeleteEventSubSubscriptionResult;
 import com.etw4s.twitchchatlink.twitch.GetUsersResult.Status;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import com.etw4s.twitchchatlink.twitch.auth.AuthManager;
@@ -33,7 +34,25 @@ public class TwitchCommand {
             .then(ClientCommandManager.argument("login", StringArgumentType.word())
                 .executes(TwitchCommand::connectHandler)))
         .then(ClientCommandManager.literal("list")
-            .executes(TwitchCommand::listHandler)));
+            .executes(TwitchCommand::listHandler))
+        .then(ClientCommandManager.literal("disconnect")
+            .then(ClientCommandManager.argument("login", StringArgumentType.word())
+                .executes(TwitchCommand::disconnectHandler))));
+  }
+
+  private static int disconnectHandler(CommandContext<FabricClientCommandSource> context) {
+    String login = StringArgumentType.getString(context, "login");
+    EventSubClient.getInstance().unsubscribe(login)
+        .thenAccept(result -> {
+          if (result.status() == DeleteEventSubSubscriptionResult.Status.Success) {
+            context.getSource().sendFeedback(Text.literal(login + " から切断しました"));
+          } else {
+            context.getSource().sendFeedback(Text.literal(login + " から切断できませんでした\nすでに切断しているか、存在しないチャンネルの可能性があります"));
+          }
+        });
+    context.getSource().sendFeedback(Text.literal(login + " から切断します"));
+
+    return 1;
   }
 
   private static int connectHandler(CommandContext<FabricClientCommandSource> context) {
@@ -48,7 +67,7 @@ public class TwitchCommand {
         if (users.isEmpty()) {
           context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
         } else {
-          EventSubClient.getInstance().connect(users.getFirst()).thenAccept(result -> {
+          EventSubClient.getInstance().subscribe(users.getFirst()).thenAccept(result -> {
                 if (result.status() == CreateEventSubSubscriptionResult.Status.Success) {
                   context.getSource()
                       .sendFeedback(
@@ -65,6 +84,7 @@ public class TwitchCommand {
         context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
       }
     }));
+    context.getSource().sendFeedback(Text.literal(login + " に接続します"));
     return 1;
   }
 
