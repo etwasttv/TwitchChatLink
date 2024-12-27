@@ -1,5 +1,6 @@
 package com.etw4s.twitchchatlink.mixin;
 
+import com.etw4s.twitchchatlink.DrawContextExtension;
 import com.etw4s.twitchchatlink.client.EmoteManager;
 import com.etw4s.twitchchatlink.model.BaseEmoji;
 import java.util.ArrayList;
@@ -157,16 +158,17 @@ public abstract class ChatHudMixin {
                     BaseEmoji emote = EmoteManager.getInstance().getEmote(name);
                     if (emote != null) {
                       Identifier id = emote.getIdentifier();
-                      context.drawTexture(id, tailX-o/4, (int) (y - 1 - 5 * g), 0, 0, o, o, o, o);
+                      ((DrawContextExtension) context).twitchChatLink$drawTexture(id, tailX - o / 4,
+                          (int) (y - 1 - 5 * g), o, o, 0f, 0f, o, o, o, o,
+                          ColorHelper.Argb.withAlpha(u, -1));
                       tailX += o;
-                      isAfterEmote = true;
                     } else {
                       tailX = context.drawTextWithShadow(client.textRenderer,
                           Text.literal(name).setStyle(Style.EMPTY.withColor(
                               Formatting.GRAY)), tailX, y,
                           ColorHelper.Argb.withAlpha(u, -1));
-                      isAfterEmote = true;
                     }
+                    isAfterEmote = true;
                   } else {
                     var tmp = context.drawTextWithShadow(client.textRenderer, text, tailX, y,
                         ColorHelper.Argb.withAlpha(u, -1));
