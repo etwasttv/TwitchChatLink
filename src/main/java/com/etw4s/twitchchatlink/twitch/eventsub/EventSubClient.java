@@ -76,12 +76,13 @@ public class EventSubClient implements Listener {
   @Override
   public void onOpen(WebSocket webSocket) {
     LOGGER.info("WebSocket is opened");
-    webSocket.request(1);
+    webSocket.request(10);
   }
 
   @Override
   public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
     LOGGER.info("WebSocket received {}", data);
+    webSocket.request(1);
     try {
       var message = gson.fromJson(data.toString(), WebSocketMessage.class);
       LOGGER.info("Message Type is {}", message.metadata.messageType);
@@ -89,8 +90,8 @@ public class EventSubClient implements Listener {
         case "session_welcome" -> sessionId = message.payload.session.id;
         case "notification" -> handleNotification(message);
       }
-    } finally {
-      webSocket.request(1);
+    } catch (Exception e) {
+      e.printStackTrace();
     }
     return Listener.super.onText(webSocket, data, last);
   }
@@ -125,6 +126,7 @@ public class EventSubClient implements Listener {
 
   @Override
   public void onError(WebSocket webSocket, Throwable error) {
+    LOGGER.info("WebSocket on error, {}", error.getMessage());
     Listener.super.onError(webSocket, error);
   }
 }

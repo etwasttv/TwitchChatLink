@@ -15,7 +15,8 @@ public class TwitchChat {
     this.chatter = chatter;
     this.text = text;
     this.fragments = fragments;
-    this.color = color == null ? "#a970ff" : color;
+    //  Todo: バリデーション
+    this.color = color == null || color.length() != 7 ? "#a970ff" : color;
   }
 
   public TwitchUser getBroadcaster() {
