@@ -109,7 +109,7 @@ public abstract class ChatHudMixin {
         int x;
         for (int r = 0; r + this.scrolledLines < this.visibleMessages.size() && r < i; ++r) {
           int s = r + this.scrolledLines;
-          ChatHudLine.Visible visible = (ChatHudLine.Visible) this.visibleMessages.get(s);
+          ChatHudLine.Visible visible = this.visibleMessages.get(s);
           if (visible != null) {
             t = currentTick - visible.addedTime();
             if (t < 200 || focused) {
