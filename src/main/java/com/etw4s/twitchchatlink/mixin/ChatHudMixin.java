@@ -158,9 +158,13 @@ public abstract class ChatHudMixin {
                     BaseEmoji emote = EmoteManager.getInstance().getEmote(name);
                     if (emote != null) {
                       Identifier id = emote.getIdentifier();
-                      ((DrawContextExtension) context).twitchChatLink$drawTexture(id, tailX - o / 4,
-                          (int) (y - 1 - 5 * g), o, o, 0f, 0f, o, o, o, o,
-                          ColorHelper.Argb.withAlpha(u, -1));
+                      try {
+                        ((DrawContextExtension) context).twitchChatLink$drawTexture(id, tailX - o / 4,
+                            (int) (y - 1 - 5 * g), o, o, 0f, 0f, o, o, o, o,
+                            ColorHelper.Argb.withAlpha(u, -1));
+                      } catch (Exception ex) {
+                        ex.printStackTrace();
+                      }
                       tailX += o;
                     } else {
                       tailX = context.drawTextWithShadow(client.textRenderer,
