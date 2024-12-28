@@ -55,15 +55,17 @@ public class EventSubClient implements Listener {
             if (result.status() == Status.Success) {
               subscribes.put(result.subscriptionId(), broadcaster);
             }
-            return  result;
+            return result;
           });
     });
   }
 
   public CompletableFuture<DeleteEventSubSubscriptionResult> unsubscribe(String login) {
-    var target = subscribes.entrySet().stream().filter(s -> s.getValue().login().equals(login)).findFirst();
+    var target = subscribes.entrySet().stream().filter(s -> s.getValue().login().equals(login))
+        .findFirst();
     if (target.isEmpty()) {
-      return CompletableFuture.completedFuture(new DeleteEventSubSubscriptionResult(DeleteEventSubSubscriptionResult.Status.NotFound));
+      return CompletableFuture.completedFuture(
+          new DeleteEventSubSubscriptionResult(DeleteEventSubSubscriptionResult.Status.NotFound));
     }
     return TwitchApi.deleteEventSubSubscription(target.get().getKey())
         .thenApply(result -> {
@@ -114,19 +116,24 @@ public class EventSubClient implements Listener {
     webSocket.request(10);
   }
 
+  StringBuffer buffer = new StringBuffer();
+
   @Override
   public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-    LOGGER.info("WebSocket received {}", data);
     webSocket.request(1);
-    try {
-      var message = gson.fromJson(data.toString(), WebSocketMessage.class);
-      LOGGER.info("Message Type is {}", message.metadata.messageType);
-      switch (message.metadata.messageType) {
-        case "session_welcome" -> sessionId = message.payload.session.id;
-        case "notification" -> handleNotification(message);
+    buffer.append(data);
+    if (last) {
+      try {
+        var message = gson.fromJson(buffer.toString(), WebSocketMessage.class);
+        buffer.delete(0, buffer.length());
+        LOGGER.info("Message Type is {}", message.metadata.messageType);
+        switch (message.metadata.messageType) {
+          case "session_welcome" -> sessionId = message.payload.session.id;
+          case "notification" -> handleNotification(message);
+        }
+      } catch (Exception e) {
+        e.printStackTrace();
       }
-    } catch (Exception e) {
-      e.printStackTrace();
     }
     return Listener.super.onText(webSocket, data, last);
   }
@@ -143,10 +150,13 @@ public class EventSubClient implements Listener {
           event.chatterUserLogin,
           event.chatterUserName);
       var fragments = Arrays.stream(event.message.fragments).map(f -> {
-        if (f.type.equals("emote")) return new ChatFragment(f.text, f.emote.id, f.emote.emoteSetId);
+        if (f.type.equals("emote")) {
+          return new ChatFragment(f.text, f.emote.id, f.emote.emoteSetId);
+        }
         return new ChatFragment(f.text);
       }).toList();
-      var twitchChat = new TwitchChat(broadcaster, chatter, event.message.text, fragments, event.color);
+      var twitchChat = new TwitchChat(broadcaster, chatter, event.message.text, fragments,
+          event.color);
       TwitchChatEvent.EVENTS.invoker().onReceive(twitchChat);
     }
   }
