@@ -29,7 +29,6 @@ class AuthRedirectServer {
       }
       server = HttpServer.create(new InetSocketAddress(port), 0);
       server.createContext("/", new RedirectHandler());
-      server.createContext("/token", new TokenHandler());
       server.setExecutor(null);
       server.start();
       LOGGER.info("Redirect server is started");

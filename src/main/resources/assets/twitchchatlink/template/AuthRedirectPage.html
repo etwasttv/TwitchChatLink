@@ -4,14 +4,32 @@
   <meta charset="UTF-8">
   <title>TwitchChatLink</title>
   <script>
-setTimeout(() => {
-  const url = new URL(window.location.href);
-  const fragment = url.hash.substring(1);
-  window.location.href=`${url.origin}/token?${fragment}`;
-}, 1000);
+    setTimeout(async () => {
+      const url = new URL(window.location.href);
+      const fragment = url.hash.substring(1);
+      const dict = {};
+      fragment.split('&').forEach(f => {
+        const [key, value] = f.split('=');
+        dict[key] = value;
+      });
+
+      const result = await fetch(url.origin, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(dict)
+      });
+
+      if (result.status == 202) {
+        document.getElementById("msg").innerText = "認証成功。タブを閉じてMaincraftに戻れます";
+      } else {
+        document.getElementById("msg").innerText = "認証失敗。タブを閉じてMaincraftに戻れます";
+      }
+    }, 1000);
   </script>
 </head>
 <body>
-1秒後にリダイレクトされます
+<h1 id="msg">1秒後にリダイレクトされます</h1>
 </body>
 </html>
