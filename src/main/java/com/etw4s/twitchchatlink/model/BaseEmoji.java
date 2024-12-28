@@ -3,9 +3,11 @@ package com.etw4s.twitchchatlink.model;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Objects;
+import java.util.Set;
 import net.minecraft.util.Identifier;
 
 public abstract class BaseEmoji {
+
   private final String id;
   private final String name;
 
@@ -21,6 +23,8 @@ public abstract class BaseEmoji {
   public String getId() {
     return id;
   }
+
+  public abstract Set<Identifier> getAllIdentifiers();
 
   public abstract Identifier getIdentifier();
 

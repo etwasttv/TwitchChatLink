@@ -1,5 +1,7 @@
 package com.etw4s.twitchchatlink.model;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.minecraft.util.Identifier;
 
@@ -16,6 +18,15 @@ public class AnimatedEmoji extends BaseEmoji {
 
   public void setTotalDelay(int totalDelay) {
     this.totalDelay = totalDelay;
+  }
+
+  @Override
+  public Set<Identifier> getAllIdentifiers() {
+    Set<Identifier> identifiers = new HashSet<>();
+    for (int i = 0; i < totalFrames; i++) {
+      identifiers.add(getFrameIdentifier(i));
+    }
+    return identifiers;
   }
 
   @Override

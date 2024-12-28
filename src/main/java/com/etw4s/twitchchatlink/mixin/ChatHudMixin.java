@@ -4,8 +4,10 @@ import com.etw4s.twitchchatlink.DrawContextExtension;
 import com.etw4s.twitchchatlink.client.EmoteManager;
 import com.etw4s.twitchchatlink.model.BaseEmoji;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.DrawContext;
@@ -14,6 +16,7 @@ import net.minecraft.client.gui.hud.ChatHudLine;
 import net.minecraft.client.gui.hud.ChatHudLine.Visible;
 import net.minecraft.client.gui.hud.MessageIndicator;
 import net.minecraft.client.gui.hud.MessageIndicator.Icon;
+import net.minecraft.network.message.MessageSignatureData;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -153,10 +156,12 @@ public abstract class ChatHudMixin {
                 int tailX = 0;
                 boolean isAfterEmote = false;
                 for (Text text : texts) {
-                  String name = EmoteManager.getInstance().getNameByUnicode(text.getString());
+                  String str = text.getString();
+                  String name = EmoteManager.getInstance().getNameByUnicode(str);
                   if (name != null) {
-                    BaseEmoji emote = EmoteManager.getInstance().getEmote(name);
+                    BaseEmoji emote = EmoteManager.getInstance().getEmojiByUnicode(str);
                     if (emote != null) {
+                      //  Emoji are already loaded
                       Identifier id = emote.getIdentifier();
                       try {
                         ((DrawContextExtension) context).twitchChatLink$drawTexture(id, tailX - o / 4,
@@ -167,6 +172,7 @@ public abstract class ChatHudMixin {
                       }
                       tailX += o;
                     } else {
+                      //  Emoji are loading
                       tailX = context.drawTextWithShadow(client.textRenderer,
                           Text.literal(name).setStyle(Style.EMPTY.withColor(
                               Formatting.GRAY)), tailX, y,
@@ -222,5 +228,36 @@ public abstract class ChatHudMixin {
       }
     }
     ci.cancel();
+  }
+
+  @Inject(method = "addMessage(Lnet/minecraft/text/Text;Lnet/minecraft/network/message/MessageSignatureData;Lnet/minecraft/client/gui/hud/MessageIndicator;)V", at = @At("TAIL"))
+  public void onAddMessage(Text message, MessageSignatureData signatureData,
+      MessageIndicator indicator, CallbackInfo ci) {
+    Set<String> usingUnicode = new HashSet<>();
+
+    for (var visible : visibleMessages) {
+      AtomicReference<Style> previousStyle = new AtomicReference<>(Style.EMPTY);
+      AtomicReference<StringBuilder> builder = new AtomicReference<>(new StringBuilder());
+      List<Text> texts = new ArrayList<>();
+      visible.content().accept((index, style, code) -> {
+        if (!style.equals(previousStyle.get())) {
+          texts.add(Text.literal(builder.toString()).setStyle(previousStyle.get()));
+          builder.set(new StringBuilder());
+          previousStyle.set(style);
+        }
+        builder.get().append(Character.toString(code));
+        return true;
+      });
+      texts.add(Text.literal(builder.get().toString()).setStyle(previousStyle.get()));
+
+      for (var text : texts) {
+        String str = text.getString();
+        if (EmoteManager.getInstance().IsUsedUnicode(str)) {
+          usingUnicode.add(str);
+        }
+      }
+    }
+
+    EmoteManager.getInstance().applyUsingUnicode(usingUnicode);
   }
 }

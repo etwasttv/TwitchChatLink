@@ -3,12 +3,12 @@ package com.etw4s.twitchchatlink.client;
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.event.TwitchChatEvent.TwitchChatListener;
 import com.etw4s.twitchchatlink.model.AnimatedEmoji;
+import com.etw4s.twitchchatlink.model.BaseEmoji;
 import com.etw4s.twitchchatlink.model.ChatFragment;
 import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
-import com.etw4s.twitchchatlink.model.TwitchChat;
-import com.etw4s.twitchchatlink.model.BaseEmoji;
-import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.model.StaticEmoji;
+import com.etw4s.twitchchatlink.model.TwitchChat;
+import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.twitch.GetEmoteSetResult.Status;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import java.awt.image.BufferedImage;
@@ -23,6 +23,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
@@ -33,6 +37,7 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.client.texture.NativeImageBackedTexture;
 import net.minecraft.client.world.ClientWorld;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,52 +47,61 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
   private static final EmoteManager instance = new EmoteManager();
   private static final int MIN_UNICODE = 0xE000;
   private static final int MAX_UNICODE = 0xF8FF;
-  private int offset = 9;
+  private static int offset = 0;
+  //  Emoji.Name -> BaseEmoji
+  private final Map<String, BaseEmoji> emojis = Collections.synchronizedMap(new HashMap<>());
+  //  Unicode -> Emoji.Name
   private final Map<String, String> unicodeMap = Collections.synchronizedMap(new HashMap<>());
-  private final Map<String, BaseEmoji> emotes = Collections.synchronizedMap(new HashMap<>());
   private long last = 0;
+  private static final ExecutorService executor = Executors.newFixedThreadPool(2);
 
   public static EmoteManager getInstance() {
     return instance;
   }
 
   public boolean isLoaded(String name) {
-    return emotes.containsKey(name);
+    return emojis.get(name) != null;
+  }
+
+  public BaseEmoji getEmojiByUnicode(String unicode) {
+    String name = getNameByUnicode(unicode);
+    if (name == null) {
+      return null;
+    }
+    return emojis.get(name);
+  }
+
+  public void applyUsingUnicode(Set<String> unicode) {
+    LOGGER.info("{} Unicode are used", unicode.size());
+    var unusedUnicodeMap = unicodeMap.entrySet().stream()
+        .filter(entry -> !unicode.contains(entry.getKey()))
+        .collect(Collectors.toSet());
+    LOGGER.info("{} Unicode are not used", unusedUnicodeMap.size());
+    unusedUnicodeMap
+        .forEach(unused -> {
+          var emoji = emojis.get(unused.getValue());
+          if (emoji == null) return;
+          for (Identifier identifier : emoji.getAllIdentifiers()) {
+            MinecraftClient.getInstance().getTextureManager().destroyTexture(identifier);
+          }
+          unicodeMap.remove(unused.getKey());
+          emojis.remove(emoji.getName());
+        });
   }
 
   public String getNameByUnicode(String unicode) {
     return unicodeMap.get(unicode);
   }
 
-  public BaseEmoji getEmoteByUnicode(String unicode) {
-    var name = unicodeMap.get(unicode);
-    if (name == null) {
-      return null;
-    }
-    return emotes.get(name);
+  public boolean IsUsedUnicode(String unicode) {
+    return unicodeMap.get(unicode) != null;
   }
 
-  public BaseEmoji getEmote(String name) {
-    return emotes.get(name);
-  }
-
-  private String getNextUnicode() {
-    String unicode = new String(Character.toChars(MIN_UNICODE+offset++));
+  public synchronized static String getNextUnicode() {
+    String unicode = new String(Character.toChars(MIN_UNICODE + offset++));
     if (MIN_UNICODE + offset > MAX_UNICODE) {
       offset = 0;
     }
-    return unicode;
-  }
-
-  public synchronized String getOrMappingUnicode(String name) {
-    if (unicodeMap.containsValue(name)) {
-      var entry = unicodeMap.entrySet().stream().filter(e -> e.getValue().equals(name)).findFirst();
-      if (entry.isPresent()) {
-        return entry.get().getKey();
-      }
-    }
-    var unicode = getNextUnicode();
-    unicodeMap.put(unicode, name);
     return unicode;
   }
 
@@ -104,115 +118,153 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
               if (result.getStatus() == Status.Success) {
                 result.getEmoteInfos().stream()
                     .filter(info -> emotes.stream().anyMatch(e -> info.id().equals(e.getEmoteId())))
-                    .forEach(this::loadEmote);
+                    .forEach(info -> executor.submit(new EmoteLoader(info)));
               }
             }));
   }
 
-  private void loadEmote(TwitchEmoteInfo info) {
-    if (isLoaded(info.name())) return;
-    if (Arrays.asList(info.format()).contains("animated")) {
-      loadAnimatedEmote(info);
-    } else {
-      loadStaticEmote(info);
+  public synchronized String getOrMappingUnicode(String name) {
+    var unicodeOptional = unicodeMap.entrySet().stream()
+        .filter(entry -> entry.getValue().equals(name))
+        .findFirst();
+
+    if (unicodeOptional.isPresent()) {
+      return unicodeOptional.get().getKey();
     }
+
+    var unicode = getNextUnicode();
+    unicodeMap.put(unicode, name);
+    return unicode;
   }
 
-  private void loadStaticEmote(TwitchEmoteInfo info) {
-    try {
-      URL url = URI.create(info.getUrl("static", null, null)).toURL();
-      try (InputStream input = url.openStream()) {
-        if (input == null) {
-          return;
-        }
-        NativeImage image = NativeImage.read(input);
-        NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
-        StaticEmoji emote = new StaticEmoji(info.id(), info.name());
-        MinecraftClient.getInstance().getTextureManager()
-            .registerTexture(emote.getIdentifier(), texture);
-        emotes.put(emote.getName(), emote);
-      } catch (IOException e) {
-        e.printStackTrace();
+  static class EmoteLoader implements Runnable {
+
+    private final TwitchEmoteInfo info;
+    private final EmoteManager manager = EmoteManager.getInstance();
+
+    EmoteLoader(TwitchEmoteInfo info) {
+      this.info = info;
+    }
+
+    @Override
+    public void run() {
+      if (manager.isLoaded(info.id())) {
+        return;
       }
-    } catch (MalformedURLException e) {
-      e.printStackTrace();
-    }
-  }
-
-  private void loadAnimatedEmote(TwitchEmoteInfo info) {
-    try {
-      URL url = URI.create(info.getUrl("animated", null, null)).toURL();
-      try (ImageInputStream input = ImageIO.createImageInputStream(url.openStream())) {
-        Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
-        if (!readers.hasNext()) {
-          throw new IOException("GIF format not supported");
-        }
-        ImageReader reader = readers.next();
-        reader.setInput(input);
-        int totalFrames = reader.getNumImages(true);
-        AnimatedEmoji emote = new AnimatedEmoji(info.id(), info.name(), totalFrames);
-        int totalDelay = 0;
-        for (int i = 0; i < totalFrames; i++) {
-          BufferedImage frame = reader.read(i);
-          IIOMetadata metadata = reader.getImageMetadata(i);
-          int delay = getFrameDelay(metadata);
-          totalDelay += delay;
-          try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-            ImageIO.write(frame, "png", output);
-            NativeImage image = NativeImage.read(output.toByteArray());
-            NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
-            MinecraftClient.getInstance().getTextureManager()
-                .registerTexture(emote.getFrameIdentifier(i), texture);
-          }
-        }
-        emote.setTotalDelay(totalDelay);
-        emotes.put(emote.getName(), emote);
-      } catch (IOException e) {
-        e.printStackTrace();
+      BaseEmoji emoji;
+      if (Arrays.asList(info.format()).contains("animated")) {
+        emoji = loadAnimatedEmote(info);
+      } else {
+        emoji = loadStaticEmote(info);
       }
-    } catch (MalformedURLException e) {
-      e.printStackTrace();
-    }
-  }
 
-  private static int getFrameDelay(IIOMetadata metadata) {
-    String formatName = "javax_imageio_gif_image_1.0";
-    if (metadata.isStandardMetadataFormatSupported()) {
+      if (emoji == null) {
+        LOGGER.info("Cant load emoji id: {}, name: {}", info.id(), info.name());
+        return;
+      }
+
+      manager.emojis.put(info.name(), emoji);
+    }
+
+    private StaticEmoji loadStaticEmote(TwitchEmoteInfo info) {
       try {
-        String[] metadataNames = metadata.getMetadataFormatNames();
-        for (String name : metadataNames) {
-          if (name.equals(formatName)) {
-            var tree = metadata.getAsTree(formatName);
-            return parseDelay(tree);
-          }
+        URL url = URI.create(info.getUrl("static", null, null)).toURL();
+        try (InputStream input = url.openStream()) {
+          NativeImage image = NativeImage.read(input);
+          NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
+          StaticEmoji emote = new StaticEmoji(info.id(), info.name());
+          MinecraftClient.getInstance().getTextureManager()
+              .registerTexture(emote.getIdentifier(), texture);
+          return emote;
+        } catch (IOException e) {
+          e.printStackTrace();
         }
-      } catch (Exception e) {
+      } catch (MalformedURLException e) {
         e.printStackTrace();
       }
+      return null;
     }
-    return 0;
-  }
 
-  private static int parseDelay(org.w3c.dom.Node root) {
-    var child = root.getFirstChild();
-    while (child != null) {
-      if ("GraphicControlExtension".equals(child.getNodeName())) {
-        var attributes = child.getAttributes();
-        var delay = attributes.getNamedItem("delayTime");
-        if (delay != null) {
-          return Integer.parseInt(delay.getNodeValue()) * 10; // GIFは100分の1秒単位
+    private AnimatedEmoji loadAnimatedEmote(TwitchEmoteInfo info) {
+      try {
+        URL url = URI.create(info.getUrl("animated", null, null)).toURL();
+        try (ImageInputStream input = ImageIO.createImageInputStream(url.openStream())) {
+          Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
+          if (!readers.hasNext()) {
+            throw new IOException("GIF format not supported");
+          }
+          ImageReader reader = readers.next();
+          reader.setInput(input);
+          int totalFrames = reader.getNumImages(true);
+          AnimatedEmoji emote = new AnimatedEmoji(info.id(), info.name(), totalFrames);
+          int totalDelay = 0;
+          for (int i = 0; i < totalFrames; i++) {
+            BufferedImage frame = reader.read(i);
+            IIOMetadata metadata = reader.getImageMetadata(i);
+            int delay = getFrameDelay(metadata);
+            totalDelay += delay;
+            try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+              ImageIO.write(frame, "png", output);
+              NativeImage image = NativeImage.read(output.toByteArray());
+              NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
+              MinecraftClient.getInstance().getTextureManager()
+                  .registerTexture(emote.getFrameIdentifier(i), texture);
+            }
+          }
+          emote.setTotalDelay(totalDelay);
+          return emote;
+        } catch (IOException e) {
+          e.printStackTrace();
+        }
+      } catch (MalformedURLException e) {
+        e.printStackTrace();
+      }
+
+      return null;
+    }
+
+    private static int getFrameDelay(IIOMetadata metadata) {
+      String formatName = "javax_imageio_gif_image_1.0";
+      if (metadata.isStandardMetadataFormatSupported()) {
+        try {
+          String[] metadataNames = metadata.getMetadataFormatNames();
+          for (String name : metadataNames) {
+            if (name.equals(formatName)) {
+              var tree = metadata.getAsTree(formatName);
+              return parseDelay(tree);
+            }
+          }
+        } catch (Exception e) {
+          e.printStackTrace();
         }
       }
-      child = child.getNextSibling();
+      return 0;
     }
-    return 0;
+
+    private static int parseDelay(org.w3c.dom.Node root) {
+      var child = root.getFirstChild();
+      while (child != null) {
+        if ("GraphicControlExtension".equals(child.getNodeName())) {
+          var attributes = child.getAttributes();
+          var delay = attributes.getNamedItem("delayTime");
+          if (delay != null) {
+            return Integer.parseInt(delay.getNodeValue()) * 10; // GIFは100分の1秒単位
+          }
+        }
+        child = child.getNextSibling();
+      }
+      return 0;
+    }
   }
+
 
   @Override
   public void onStartTick(ClientWorld clientWorld) {
     var now = System.currentTimeMillis();
-    if (last == 0) last = now;
-    emotes.values().forEach(e -> e.animate(now - last));
+    if (last == 0) {
+      last = now;
+    }
+    emojis.values().forEach(e -> e.animate(now - last));
     last = now;
   }
 }
