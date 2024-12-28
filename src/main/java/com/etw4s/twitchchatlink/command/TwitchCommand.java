@@ -1,6 +1,7 @@
 package com.etw4s.twitchchatlink.command;
 
 import com.etw4s.twitchchatlink.TwitchChatLink;
+import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
 import com.etw4s.twitchchatlink.twitch.DeleteEventSubSubscriptionResult;
 import com.etw4s.twitchchatlink.twitch.GetUsersResult.Status;
@@ -10,9 +11,11 @@ import com.etw4s.twitchchatlink.twitch.eventsub.EventSubClient;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.suggestion.SuggestionProvider;
 import net.fabricmc.fabric.api.client.command.v2.ClientCommandManager;
 import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
 import net.minecraft.command.CommandRegistryAccess;
+import net.minecraft.command.CommandSource;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
 import net.minecraft.text.Style;
@@ -37,6 +40,7 @@ public class TwitchCommand {
             .executes(TwitchCommand::listHandler))
         .then(ClientCommandManager.literal("disconnect")
             .then(ClientCommandManager.argument("login", StringArgumentType.word())
+                .suggests(getSubscribesSuggestion())
                 .executes(TwitchCommand::disconnectHandler))));
   }
 
@@ -47,7 +51,8 @@ public class TwitchCommand {
           if (result.status() == DeleteEventSubSubscriptionResult.Status.Success) {
             context.getSource().sendFeedback(Text.literal(login + " から切断しました"));
           } else {
-            context.getSource().sendFeedback(Text.literal(login + " から切断できませんでした\nすでに切断しているか、存在しないチャンネルの可能性があります"));
+            context.getSource().sendFeedback(Text.literal(login
+                + " から切断できませんでした\nすでに切断しているか、存在しないチャンネルの可能性があります"));
           }
         });
     context.getSource().sendFeedback(Text.literal(login + " から切断します"));
@@ -91,6 +96,12 @@ public class TwitchCommand {
   private static int authHandler(CommandContext<FabricClientCommandSource> context) {
     AuthManager.getInstance().startAuth();
     return 1;
+  }
+
+  private static SuggestionProvider<FabricClientCommandSource> getSubscribesSuggestion() {
+    return (context, builder) -> CommandSource.suggestMatching(
+        EventSubClient.getInstance().getSubscribeList().stream().map(
+            TwitchUser::login), builder);
   }
 
   private static int listHandler(CommandContext<FabricClientCommandSource> context) {
