@@ -16,9 +16,16 @@ public class GetEmoteSetResult {
     return result;
   }
 
-  static GetEmoteSetResult fail(String emoteSetId) {
+  static GetEmoteSetResult badRequest(String emoteSetId) {
     var result = new GetEmoteSetResult();
-    result.status = Status.Fail;
+    result.status = Status.BadRequest;
+    result.emoteSetId = emoteSetId;
+    return result;
+  }
+
+  static GetEmoteSetResult unauthorized(String emoteSetId) {
+    var result = new GetEmoteSetResult();
+    result.status = Status.Unauthorized;
     result.emoteSetId = emoteSetId;
     return result;
   }
@@ -37,6 +44,7 @@ public class GetEmoteSetResult {
 
   public enum Status {
     Success,
-    Fail
+    BadRequest,
+    Unauthorized
   }
 }

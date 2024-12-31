@@ -6,12 +6,32 @@ public record CreateEventSubSubscriptionResult(Status status, String subscriptio
     return new CreateEventSubSubscriptionResult(Status.Success, subscriptionId, type);
   }
 
-  public static CreateEventSubSubscriptionResult fail() {
-    return new CreateEventSubSubscriptionResult(Status.Fail, null, null);
+  public static CreateEventSubSubscriptionResult badRequest() {
+    return new CreateEventSubSubscriptionResult(Status.BadRequest, null, null);
+  }
+
+  public static CreateEventSubSubscriptionResult unauthorized() {
+    return new CreateEventSubSubscriptionResult(Status.Unauthorized, null, null);
+  }
+
+  public static CreateEventSubSubscriptionResult forbidden() {
+    return new CreateEventSubSubscriptionResult(Status.Forbidden, null, null);
+  }
+
+  public static CreateEventSubSubscriptionResult conflict() {
+    return new CreateEventSubSubscriptionResult(Status.Conflict, null, null);
+  }
+
+  public static CreateEventSubSubscriptionResult tooManyRequests() {
+    return new CreateEventSubSubscriptionResult(Status.TooManyRequests, null, null);
   }
 
   public enum Status {
     Success,
-    Fail
+    BadRequest,
+    Unauthorized,
+    Forbidden,
+    Conflict,
+    TooManyRequests,
   }
 }

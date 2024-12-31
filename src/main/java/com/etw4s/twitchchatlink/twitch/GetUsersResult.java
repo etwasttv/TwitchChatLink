@@ -5,21 +5,21 @@ import java.util.List;
 
 public record GetUsersResult(Status status, List<TwitchUser> users) {
 
-  public static GetUsersResult OkResult(List<TwitchUser> users) {
-    return new GetUsersResult(Status.Ok, users);
+  public static GetUsersResult success(List<TwitchUser> users) {
+    return new GetUsersResult(Status.Success, users);
   }
 
-  public static GetUsersResult Unauthorized() {
+  public static GetUsersResult unauthorized() {
     return new GetUsersResult(Status.Unauthorized, null);
   }
 
-  public static GetUsersResult ErrorResult() {
-    return new GetUsersResult(Status.Error, null);
+  public static GetUsersResult badRequest() {
+    return new GetUsersResult(Status.BadRequest, null);
   }
 
   public enum Status {
-    Ok,
-    Unauthorized,
-    Error,
+    Success,
+    BadRequest,
+    Unauthorized
   }
 }

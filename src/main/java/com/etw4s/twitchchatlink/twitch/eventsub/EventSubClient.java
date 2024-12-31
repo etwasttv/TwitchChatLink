@@ -65,7 +65,7 @@ public class EventSubClient implements Listener {
         .findFirst();
     if (target.isEmpty()) {
       return CompletableFuture.completedFuture(
-          new DeleteEventSubSubscriptionResult(DeleteEventSubSubscriptionResult.Status.NotFound));
+          null);
     }
     return TwitchApi.deleteEventSubSubscription(target.get().getKey())
         .thenApply(result -> {
