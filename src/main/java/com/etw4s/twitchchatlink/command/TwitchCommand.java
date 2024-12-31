@@ -81,8 +81,7 @@ public class TwitchCommand {
             if (result.status() == CreateEventSubSubscriptionResult.Status.Success) {
               context.getSource().sendFeedback(
                   //  Todo: create method to get string: Display(login) of TwitchUser
-                  Text.literal(target.displayName() + "(" + target.login() + ")"
-                      + "のチャットが表示されます"));
+                  Text.literal(target.getDisplayNameAndLogin() + "のチャットが表示されます"));
             } else {
               context.getSource().sendFeedback(Text.literal(
                   users.getFirst().displayName() + "のチャットに接続できませんでした"));
@@ -124,8 +123,7 @@ public class TwitchCommand {
           config.setDefaultLogin(target.login());
           config.save();
           context.getSource().sendFeedback(Text.literal(
-              target.displayName() + "(" + target.login() + ")"
-                  + "をデフォルトの接続先に設定しました"));
+              target.getDisplayNameAndLogin() + "をデフォルトの接続先に設定しました"));
         }
       }
     }));
@@ -176,9 +174,7 @@ public class TwitchCommand {
           EventSubClient.getInstance().subscribe(target).thenAccept(result -> {
             if (result.status() == CreateEventSubSubscriptionResult.Status.Success) {
               context.getSource().sendFeedback(
-                  //  Todo: create method to get string: Display(login) of TwitchUser
-                  Text.literal(target.displayName() + "(" + target.login() + ")"
-                      + "のチャットが表示されます"));
+                  Text.literal(target.getDisplayNameAndLogin() + "のチャットが表示されます"));
             } else {
               context.getSource().sendFeedback(Text.literal(
                   users.getFirst().displayName() + "のチャットに接続できませんでした"));
@@ -210,7 +206,7 @@ public class TwitchCommand {
     } else {
       var text = Text.literal("現在、以下のチャンネルに接続しています\n");
       for (var broadcaster : subscribes) {
-        text.append(Text.literal(broadcaster.displayName() + "(" + broadcaster.login() + ")")
+        text.append(Text.literal(broadcaster.getDisplayNameAndLogin())
             .setStyle(Style.EMPTY.withHoverEvent(new HoverEvent(Action.SHOW_TEXT,
                     Text.literal(broadcaster.getChannelUrl()))).withClickEvent(
                     new ClickEvent(ClickEvent.Action.OPEN_URL, broadcaster.getChannelUrl()))
