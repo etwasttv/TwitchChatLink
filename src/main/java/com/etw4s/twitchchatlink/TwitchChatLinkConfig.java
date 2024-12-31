@@ -15,6 +15,7 @@ public class TwitchChatLinkConfig {
 
   private String token;
   private String userId;
+  private String defaultLogin;
 
   private TwitchChatLinkConfig() {
   }
@@ -49,11 +50,19 @@ public class TwitchChatLinkConfig {
     this.userId = userId;
   }
 
+  public void setDefaultLogin(String login) {
+    this.defaultLogin = login;
+  }
+
   public String getToken() {
     return token;
   }
 
   public String getUserId() {
     return userId;
+  }
+
+  public String getDefaultLogin() {
+    return defaultLogin;
   }
 }
