@@ -11,6 +11,8 @@ import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.twitch.GetEmoteSetResult.Status;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
+import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -23,7 +25,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -74,19 +75,19 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
   public void applyUsingUnicode(Set<String> unicode) {
     LOGGER.info("{} Unicode are used", unicode.size());
     var unusedUnicodeMap = unicodeMap.entrySet().stream()
-        .filter(entry -> !unicode.contains(entry.getKey()))
-        .collect(Collectors.toSet());
+        .filter(entry -> !unicode.contains(entry.getKey())).collect(Collectors.toSet());
     LOGGER.info("{} Unicode are not used", unusedUnicodeMap.size());
-    unusedUnicodeMap
-        .forEach(unused -> {
-          var emoji = emojis.get(unused.getValue());
-          if (emoji == null) return;
-          for (Identifier identifier : emoji.getAllIdentifiers()) {
-            MinecraftClient.getInstance().getTextureManager().destroyTexture(identifier);
-          }
-          unicodeMap.remove(unused.getKey());
-          emojis.remove(emoji.getName());
-        });
+    unusedUnicodeMap.forEach(unused -> {
+      var emoji = emojis.get(unused.getValue());
+      if (emoji == null) {
+        return;
+      }
+      for (Identifier identifier : emoji.getAllIdentifiers()) {
+        MinecraftClient.getInstance().getTextureManager().destroyTexture(identifier);
+      }
+      unicodeMap.remove(unused.getKey());
+      emojis.remove(emoji.getName());
+    });
   }
 
   public String getNameByUnicode(String unicode) {
@@ -107,26 +108,22 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
 
   @Override
   public void onReceive(TwitchChat chat) {
-    var emotes = chat.getFragments().stream()
-        .filter(f -> f.getType() == ChatFragmentType.Emote)
+    var emotes = chat.getFragments().stream().filter(f -> f.getType() == ChatFragmentType.Emote)
         .collect(Collectors.toSet());
     var emoteSetIds = emotes.stream().map(ChatFragment::getEmoteSetId).collect(Collectors.toSet());
 
-    emoteSetIds.forEach(emoteSetId ->
-        TwitchApi.getEmoteSet(emoteSetId)
-            .thenAccept(result -> {
-              if (result.getStatus() == Status.Success) {
-                result.getEmoteInfos().stream()
-                    .filter(info -> emotes.stream().anyMatch(e -> info.id().equals(e.getEmoteId())))
-                    .forEach(info -> executor.submit(new EmoteLoader(info)));
-              }
-            }));
+    emoteSetIds.forEach(emoteSetId -> TwitchApi.getEmoteSet(emoteSetId).thenAccept(result -> {
+      if (result.getStatus() == Status.Success) {
+        result.getEmoteInfos().stream()
+            .filter(info -> emotes.stream().anyMatch(e -> info.id().equals(e.getEmoteId())))
+            .forEach(info -> executor.submit(new EmoteLoader(info)));
+      }
+    }));
   }
 
   public synchronized String getOrMappingUnicode(String name) {
     var unicodeOptional = unicodeMap.entrySet().stream()
-        .filter(entry -> entry.getValue().equals(name))
-        .findFirst();
+        .filter(entry -> entry.getValue().equals(name)).findFirst();
 
     if (unicodeOptional.isPresent()) {
       return unicodeOptional.get().getKey();
@@ -198,18 +195,58 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
           int totalFrames = reader.getNumImages(true);
           AnimatedEmoji emote = new AnimatedEmoji(info.id(), info.name(), totalFrames);
           int totalDelay = 0;
+          BufferedImage previousFrame = null;
+          BufferedImage canvas = null;
           for (int i = 0; i < totalFrames; i++) {
-            BufferedImage frame = reader.read(i);
+            BufferedImage currentFrame = reader.read(i);
+            if (canvas == null) {
+              canvas = new BufferedImage(currentFrame.getWidth(), currentFrame.getHeight(),
+                  BufferedImage.TYPE_INT_ARGB);
+            }
             IIOMetadata metadata = reader.getImageMetadata(i);
+            var disposalMethod = getDisposalMethod(metadata);
+            LOGGER.info("frame {}: {}x{} {}", i, currentFrame.getWidth(), currentFrame.getHeight(),
+                disposalMethod.name());
+            var background = getBackgroundColor(metadata);
             int delay = getFrameDelay(metadata);
+            int[] pos = getFramePosition(metadata);
             totalDelay += delay;
+
+            var g = canvas.createGraphics();
+            g.drawImage(currentFrame, pos[0], pos[1], null);
+
+
+
             try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
-              ImageIO.write(frame, "png", output);
+              ImageIO.write(canvas, "png", output);
               NativeImage image = NativeImage.read(output.toByteArray());
               NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
               MinecraftClient.getInstance().getTextureManager()
                   .registerTexture(emote.getFrameIdentifier(i), texture);
             }
+            switch (disposalMethod) {
+              case DoNotDispose -> {
+              }
+              case Nothing, RestoreToBackground ->{
+                g.setComposite(AlphaComposite.Clear);
+                g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                g.setComposite(AlphaComposite.SrcOver);
+              }
+              case RestoreToPrevious -> {
+                g.setComposite(AlphaComposite.Clear);
+                g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
+                g.setComposite(AlphaComposite.SrcOver);
+                if (previousFrame != null) {
+                  g.drawImage(previousFrame, 0, 0, null);
+                }
+              }
+            }
+            previousFrame = new BufferedImage(canvas.getWidth(), canvas.getHeight(),
+                BufferedImage.TYPE_INT_ARGB);
+            var pg = previousFrame.getGraphics();
+            pg.drawImage(canvas, 0, 0, null);
+            pg.dispose();
+            g.dispose();
           }
           emote.setTotalDelay(totalDelay);
           return emote;
@@ -254,6 +291,102 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
         child = child.getNextSibling();
       }
       return 0;
+    }
+
+    private static DisposableMethod getDisposalMethod(IIOMetadata metadata) {
+      String nativeFormat = metadata.getNativeMetadataFormatName();
+      javax.imageio.metadata.IIOMetadataNode root = (javax.imageio.metadata.IIOMetadataNode) metadata.getAsTree(
+          nativeFormat);
+
+      // "GraphicControlExtension" ノードを探す
+      javax.imageio.metadata.IIOMetadataNode graphicControlExtension = (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName(
+          "GraphicControlExtension").item(0);
+
+      if (graphicControlExtension == null) {
+        return DisposableMethod.Nothing;
+      }
+
+      // "disposalMethod" 属性を取得
+      String disposalMethod = graphicControlExtension.getAttribute("disposalMethod");
+      switch (disposalMethod) {
+        case "doNotDispose":
+          return DisposableMethod.DoNotDispose;
+        case "restoreToBackgroundColor":
+          return DisposableMethod.RestoreToBackground;
+        case "restoreToPrevious":
+          return DisposableMethod.RestoreToPrevious;
+        case "none":
+        default:
+          return DisposableMethod.Nothing;
+      }
+    }
+
+    private enum DisposableMethod {
+      DoNotDispose, RestoreToBackground, RestoreToPrevious, Nothing,
+    }
+
+    private static Color getBackgroundColor(IIOMetadata metadata) {
+      String nativeFormat = metadata.getNativeMetadataFormatName();
+      javax.imageio.metadata.IIOMetadataNode root = (javax.imageio.metadata.IIOMetadataNode) metadata.getAsTree(
+          nativeFormat);
+
+      // "LogicalScreenDescriptor" ノードを探す
+      javax.imageio.metadata.IIOMetadataNode logicalScreenDescriptor =
+          (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName(
+              "LogicalScreenDescriptor").item(0);
+
+      if (logicalScreenDescriptor == null) {
+        return null;
+      }
+
+      // 背景色インデックスを取得
+      String bgColorIndexStr = logicalScreenDescriptor.getAttribute("backgroundColorIndex");
+      int bgColorIndex = Integer.parseInt(bgColorIndexStr);
+
+      // グローバルカラーテーブルを取得
+      javax.imageio.metadata.IIOMetadataNode globalColorTable =
+          (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName("GlobalColorTable")
+              .item(0);
+
+      if (globalColorTable == null) {
+        return null;
+      }
+
+      // パレット配列から背景色を取得
+      javax.imageio.metadata.IIOMetadataNode colorEntry =
+          (javax.imageio.metadata.IIOMetadataNode) globalColorTable.getElementsByTagName(
+              "ColorEntry").item(bgColorIndex);
+
+      if (colorEntry == null) {
+        return null;
+      }
+
+      int red = Integer.parseInt(colorEntry.getAttribute("red"));
+      int green = Integer.parseInt(colorEntry.getAttribute("green"));
+      int blue = Integer.parseInt(colorEntry.getAttribute("blue"));
+
+      return new Color(red, green, blue);
+    }
+
+    private static int[] getFramePosition(IIOMetadata metadata) {
+      String nativeFormat = metadata.getNativeMetadataFormatName();
+      javax.imageio.metadata.IIOMetadataNode root = (javax.imageio.metadata.IIOMetadataNode) metadata.getAsTree(
+          nativeFormat);
+
+      // "ImageDescriptor" ノードを探す
+      javax.imageio.metadata.IIOMetadataNode imageDescriptor =
+          (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName("ImageDescriptor")
+              .item(0);
+
+      if (imageDescriptor == null) {
+        return new int[]{0, 0};
+      }
+
+      // 座標情報を取得
+      int leftPosition = Integer.parseInt(imageDescriptor.getAttribute("imageLeftPosition"));
+      int topPosition = Integer.parseInt(imageDescriptor.getAttribute("imageTopPosition"));
+
+      return new int[]{leftPosition, topPosition};
     }
   }
 
