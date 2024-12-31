@@ -7,7 +7,6 @@
   ],
   "client": [
     "ChatHudMixin",
-    "DrawContextMixin",
     "MinecraftClinetMixin"
   ],
   "injectors": {

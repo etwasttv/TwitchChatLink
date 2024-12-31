@@ -16,6 +16,7 @@ import net.minecraft.client.gui.hud.ChatHudLine;
 import net.minecraft.client.gui.hud.ChatHudLine.Visible;
 import net.minecraft.client.gui.hud.MessageIndicator;
 import net.minecraft.client.gui.hud.MessageIndicator.Icon;
+import net.minecraft.client.render.RenderLayer;
 import net.minecraft.network.message.MessageSignatureData;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
@@ -23,6 +24,7 @@ import net.minecraft.util.Formatting;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.math.ColorHelper;
 import net.minecraft.util.math.MathHelper;
+import net.minecraft.util.profiler.Profilers;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -89,7 +91,8 @@ public abstract class ChatHudMixin {
       int i = this.getVisibleLineCount();
       int j = this.visibleMessages.size();
       if (j > 0) {
-        this.client.getProfiler().push("chat");
+        var profiler = Profilers.get();
+        profiler.push("chat");
         float f = (float) this.getChatScale();
         int k = MathHelper.ceil((float) this.getWidth() / f);
         int l = context.getScaledWindowHeight();
@@ -164,9 +167,9 @@ public abstract class ChatHudMixin {
                       //  Emoji are already loaded
                       Identifier id = emote.getIdentifier();
                       try {
-                        ((DrawContextExtension) context).twitchChatLink$drawTexture(id, tailX - o / 4,
-                            (int) (y - 1 - 5 * g), o, o, 0f, 0f, o, o, o, o,
-                            ColorHelper.Argb.withAlpha(u, -1));
+                        context.drawTexture(RenderLayer::getGuiTextured, id, tailX - o / 4,
+                            (int) (y - 1 - 5 * g), 0, 0, o, o, o, o,
+                            ColorHelper.withAlpha(u, -1));
                       } catch (Exception ex) {
                         ex.printStackTrace();
                       }
@@ -176,12 +179,12 @@ public abstract class ChatHudMixin {
                       tailX = context.drawTextWithShadow(client.textRenderer,
                           Text.literal(name).setStyle(Style.EMPTY.withColor(
                               Formatting.GRAY)), tailX, y,
-                          ColorHelper.Argb.withAlpha(u, -1));
+                          ColorHelper.withAlpha(u, -1));
                     }
                     isAfterEmote = true;
                   } else {
                     var tmp = context.drawTextWithShadow(client.textRenderer, text, tailX, y,
-                        ColorHelper.Argb.withAlpha(u, -1));
+                        ColorHelper.withAlpha(u, -1));
                     if (!isAfterEmote) {
                       tailX = tmp;
                     }
@@ -224,7 +227,7 @@ public abstract class ChatHudMixin {
         }
 
         context.getMatrices().pop();
-        this.client.getProfiler().pop();
+        profiler.pop();
       }
     }
     ci.cancel();

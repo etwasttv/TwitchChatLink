@@ -38,6 +38,6 @@ public class TwitchChatEventListener implements
     }
     MutableText full = Text.empty().append(chatter).append(separator).append(text);
 
-    client.player.sendMessage(full);
+    client.player.sendMessage(full, false);
   }
 }

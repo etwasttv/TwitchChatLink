@@ -58,7 +58,7 @@ public class AuthManager {
 
     MutableText full = Text.empty().append(link).append(message);
 
-    player.sendMessage(full);
+    player.sendMessage(full, false);
   }
 
   public CompletableFuture<Boolean> saveToken(String token) {
@@ -73,7 +73,7 @@ public class AuthManager {
             ClientPlayerEntity player = MinecraftClient.getInstance().player;
             if (player != null) {
               MutableText text = Text.literal("認証に成功しました!");
-              player.sendMessage(text);
+              player.sendMessage(text, false);
             }
             return true;
           }
