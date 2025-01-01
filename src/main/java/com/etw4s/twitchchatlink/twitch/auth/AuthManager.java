@@ -47,6 +47,8 @@ public class AuthManager {
     MutableText link = Text.literal("ここ")
         .setStyle(Style.EMPTY
             .withBold(true)
+            .withUnderline(true)
+            .withItalic(true)
             .withHoverEvent(
                 new HoverEvent(HoverEvent.Action.SHOW_TEXT, Text.literal("ブラウザで開く")))
             .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, getAuthUrl()))
@@ -54,7 +56,7 @@ public class AuthManager {
 
     MutableText message = Text.literal("をクリックしてTwitchChatLinkを認証してください")
         .setStyle(Style.EMPTY
-            .withColor(Formatting.WHITE));
+            .withColor(Formatting.GOLD));
 
     MutableText full = Text.empty().append(link).append(message);
 

@@ -3,10 +3,10 @@ package com.etw4s.twitchchatlink.twitch.eventsub;
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.event.TwitchChatEvent;
 import com.etw4s.twitchchatlink.model.ChatFragment;
+import com.etw4s.twitchchatlink.model.TwitchChannel;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
-import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult.Status;
 import com.etw4s.twitchchatlink.twitch.DeleteEventSubSubscriptionResult;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
@@ -34,7 +34,7 @@ public class EventSubClient implements Listener {
   private final HttpClient httpClient = HttpClient.newHttpClient();
   private volatile String sessionId;
   private final Gson gson = TwitchChatLinkGson.getGson();
-  private final Map<String, TwitchUser> subscribes = Collections.synchronizedMap(new HashMap<>());
+  private final Map<String, TwitchChannel> subscribes = Collections.synchronizedMap(new HashMap<>());
 
   private EventSubClient() {
   }
@@ -43,7 +43,7 @@ public class EventSubClient implements Listener {
     return instance;
   }
 
-  public CompletableFuture<CreateEventSubSubscriptionResult> subscribe(TwitchUser broadcaster) {
+  public CompletableFuture<CreateEventSubSubscriptionResult> subscribe(TwitchChannel broadcaster) {
     return connect().thenCompose((_v) -> {
       try {
         Thread.sleep(1000);
@@ -52,9 +52,7 @@ public class EventSubClient implements Listener {
       }
       return TwitchApi.createChannelChatMessageSubscription(sessionId, broadcaster)
           .thenApply(result -> {
-            if (result.status() == Status.Success) {
-              subscribes.put(result.subscriptionId(), broadcaster);
-            }
+            subscribes.put(result.subscriptionId(), broadcaster);
             return result;
           });
     });
@@ -65,7 +63,7 @@ public class EventSubClient implements Listener {
         .findFirst();
     if (target.isEmpty()) {
       return CompletableFuture.completedFuture(
-          null);
+          new DeleteEventSubSubscriptionResult());
     }
     return TwitchApi.deleteEventSubSubscription(target.get().getKey())
         .thenApply(result -> {
@@ -74,7 +72,7 @@ public class EventSubClient implements Listener {
         });
   }
 
-  public List<TwitchUser> getSubscribeList() {
+  public List<TwitchChannel> getSubscribeList() {
     return new ArrayList<>(subscribes.values());
   }
 
