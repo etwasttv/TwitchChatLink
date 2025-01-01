@@ -3,6 +3,7 @@ package com.etw4s.twitchchatlink.twitch;
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.TwitchChatLinkContracts;
+import com.etw4s.twitchchatlink.model.TwitchChannel;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
@@ -116,5 +117,39 @@ public class TwitchApi {
           case HttpStatus.SC_UNAUTHORIZED -> GetEmoteSetResult.unauthorized(emoteSetId);
           default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
         });
+  }
+
+  public static CompletableFuture<SearchChannelsResult> searchChannels(String query,
+      boolean liveOnly, int count, String after) throws TwitchApiException {
+    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    StringBuilder url = new StringBuilder("https://api.twitch.tv/helix/search/channels");
+    url.append("?query=").append(query);
+    url.append("&live_only=").append(liveOnly);
+    url.append("&first=").append(count);
+    if (after != null && !after.isEmpty()) {
+      url.append("&after=").append(after);
+    }
+    var request = HttpRequest.newBuilder()
+        .uri(URI.create(url.toString()))
+        .header("Authorization", "Bearer " + config.getToken())
+        .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID)
+        .GET().build();
+    return client.sendAsync(request, BodyHandlers.ofString())
+        .thenApply(response ->
+            switch (response.statusCode()) {
+              case HttpStatus.SC_OK -> {
+                var body = gson.fromJson(response.body(), SearchChannelsResponse.class);
+                var channels = Arrays.stream(body.data).map(data -> new TwitchChannel(data.id(),
+                    data.broadcasterLogin(), data.displayName(), data.isLive())).toList();
+                var cursor = body.pagination != null ? body.pagination.cursor() : null;
+                yield new SearchChannelsResult(channels, cursor);
+              }
+              case HttpStatus.SC_BAD_REQUEST ->
+                  throw new TwitchApiException("BadRequest", HttpStatus.SC_BAD_REQUEST);
+              case HttpStatus.SC_UNAUTHORIZED ->
+                  throw new TwitchApiException("Unauthorized", HttpStatus.SC_UNAUTHORIZED);
+              default ->
+                  throw new IllegalStateException("Unexpected value: " + response.statusCode());
+            });
   }
 }

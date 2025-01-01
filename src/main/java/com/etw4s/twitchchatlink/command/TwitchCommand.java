@@ -34,10 +34,14 @@ public class TwitchCommand {
       CommandRegistryAccess access) {
     dispatcher.register(ClientCommandManager.literal("twitch")
         .then(ClientCommandManager.literal("auth").executes(TwitchCommand::authHandler))
+        .then(ClientCommandManager.literal("search")
+            .then(ClientCommandManager.argument("query", StringArgumentType.greedyString())
+                .executes(TwitchCommand::searchHandler)
+                .then(ClientCommandManager.argument("cursor", StringArgumentType.string())
+                    .executes(TwitchCommand::searchHandler))))
         .then(ClientCommandManager.literal("connect")
             .executes(TwitchCommand::connectToDefault)
-            //  Todo: define original argument type
-            .then(ClientCommandManager.argument("login", StringArgumentType.greedyString())
+            .then(ClientCommandManager.argument("login", StringArgumentType.word())
                 .executes(TwitchCommand::connectHandler)))
         .then(ClientCommandManager.literal("list").executes(TwitchCommand::listHandler))
         .then(ClientCommandManager.literal("disconnect")
@@ -47,6 +51,89 @@ public class TwitchCommand {
         .then(ClientCommandManager.literal("set-default")
             .then(ClientCommandManager.argument("login", StringArgumentType.word())
                 .executes(TwitchCommand::setDefaultHandler))));
+  }
+
+  private static int searchHandler(CommandContext<FabricClientCommandSource> context) {
+    String query = StringArgumentType.getString(context, "query");
+    String cursor = null;
+    try {
+      cursor = StringArgumentType.getString(context, "cursor");
+    } catch (IllegalArgumentException ignored) {
+    }
+    var future = TwitchApi.searchChannels(query, false, 8, cursor);
+    future.whenComplete(((result, throwable) -> {
+      if (throwable != null) {
+        LOGGER.info("Search Command Exception: {}", throwable.getMessage());
+        context.getSource().sendFeedback(
+            Text.literal("検索できませんでした。").setStyle(Style.EMPTY.withColor(Formatting.RED)));
+        return;
+      }
+
+      var response = Text.empty();
+      response.append(
+          Text.literal(query + "の検索結果 ==========\n")
+              .setStyle(Style.EMPTY
+                  .withBold(true)
+                  .withColor(Formatting.GOLD)));
+      var itr = result.channels().iterator();
+      while (itr.hasNext()) {
+        var data = itr.next();
+        var connect = Text.empty();
+        connect.append(Text.literal("["));
+        connect.append(Text.literal("接続").setStyle(Style.EMPTY
+            .withColor(Formatting.GOLD)));
+        connect.append(Text.literal("]"));
+        connect.setStyle(Style.EMPTY
+            .withHoverEvent(
+                new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                    Text.literal("クリックして" + data.displayName() + "のチャットに接続する")))
+            .withClickEvent(
+                new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/twitch connect " + data.login())));
+        response.append(connect);
+        response.append(" ");
+        var channelInfo = Text.empty();
+        channelInfo.append(
+            Text.literal(data.displayName()).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
+        channelInfo.append(Text.literal("(").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+        channelInfo.append(Text.literal(data.login())
+            .setStyle(Style.EMPTY
+                .withColor(Formatting.DARK_AQUA)
+                .withItalic(true)));
+        channelInfo.append(Text.literal(")").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+        channelInfo.setStyle(Style.EMPTY
+            .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                Text.empty()
+                    .append(Text.literal("クリックで"))
+                    .append(
+                        Text.literal(data.getUrl())
+                            .setStyle(Style.EMPTY
+                                .withColor(Formatting.BLUE)))
+                    .append(Text.literal("を開く"))))
+            .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, data.getUrl())));
+        response.append(channelInfo);
+
+        if (itr.hasNext()) {
+          response.append("\n");
+        }
+      }
+      if (result.cursor() != null) {
+        response.append("\n");
+        response.append("     [");
+        response.append(Text.literal("次のページ").setStyle(
+            Style.EMPTY
+                .withClickEvent(
+                    new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                        "/twitch search " + query + " " + StringArgumentType.escapeIfRequired(
+                            result.cursor())))
+                .withUnderline(true)
+                .withBold(true)
+                .withItalic(true)
+                .withColor(Formatting.DARK_GRAY)));
+        response.append("]");
+      }
+      context.getSource().sendFeedback(response);
+    }));
+    return 1;
   }
 
   private static int connectToDefault(CommandContext<FabricClientCommandSource> context) {
