@@ -4,6 +4,7 @@ import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.TwitchChatLinkContracts;
 import com.etw4s.twitchchatlink.model.TwitchChannel;
+import com.etw4s.twitchchatlink.model.TwitchChannel.LiveStatus;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
@@ -40,8 +41,9 @@ public class TwitchApi {
         switch (response.statusCode()) {
           case HttpStatus.SC_OK -> {
             var body = gson.fromJson(response.body(), GetUsersResponse.class);
-            yield GetUsersResult.success(Arrays.stream(body.data)
-                .map(user -> new TwitchUser(user.id, user.login, user.displayName)).toList());
+            var channels = Arrays.stream(body.data)
+                .map(u -> new TwitchChannel(u.id, u.login, u.displayName, LiveStatus.Unknown)).toList();
+            yield new GetUsersResult(channels);
           }
           case HttpStatus.SC_BAD_REQUEST ->
               throw new TwitchApiException("Bad Request", HttpStatus.SC_BAD_REQUEST);
@@ -52,7 +54,7 @@ public class TwitchApi {
   }
 
   public static CompletableFuture<CreateEventSubSubscriptionResult> createChannelChatMessageSubscription(
-      String sessionId, TwitchUser broadcaster) {
+      String sessionId, TwitchChannel broadcaster) {
     TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
     var requestBody = new CreateEventSubSubscriptionRequest();
     requestBody.condition = new ChannelChatMessageCondition(broadcaster.id(), config.getUserId());
@@ -141,7 +143,8 @@ public class TwitchApi {
               case HttpStatus.SC_OK -> {
                 var body = gson.fromJson(response.body(), SearchChannelsResponse.class);
                 var channels = Arrays.stream(body.data).map(data -> new TwitchChannel(data.id(),
-                    data.broadcasterLogin(), data.displayName(), data.isLive())).toList();
+                    data.broadcasterLogin(), data.displayName(),
+                    data.isLive() ? LiveStatus.Online : LiveStatus.Offline)).toList();
                 var cursor = body.pagination != null ? body.pagination.cursor() : null;
                 yield new SearchChannelsResult(channels, cursor);
               }

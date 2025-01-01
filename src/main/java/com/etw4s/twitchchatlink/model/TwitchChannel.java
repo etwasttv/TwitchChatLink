@@ -4,9 +4,15 @@ public record TwitchChannel(
     String id,
     String login,
     String displayName,
-    boolean isLive
+    LiveStatus liveStatus
 ) {
   public String getUrl() {
     return "https://www.twitch.tv/" + login;
+  }
+
+  public enum LiveStatus {
+    Online,
+    Offline,
+    Unknown
   }
 }

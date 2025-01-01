@@ -3,6 +3,7 @@ package com.etw4s.twitchchatlink.twitch.eventsub;
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.event.TwitchChatEvent;
 import com.etw4s.twitchchatlink.model.ChatFragment;
+import com.etw4s.twitchchatlink.model.TwitchChannel;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
@@ -33,7 +34,7 @@ public class EventSubClient implements Listener {
   private final HttpClient httpClient = HttpClient.newHttpClient();
   private volatile String sessionId;
   private final Gson gson = TwitchChatLinkGson.getGson();
-  private final Map<String, TwitchUser> subscribes = Collections.synchronizedMap(new HashMap<>());
+  private final Map<String, TwitchChannel> subscribes = Collections.synchronizedMap(new HashMap<>());
 
   private EventSubClient() {
   }
@@ -42,7 +43,7 @@ public class EventSubClient implements Listener {
     return instance;
   }
 
-  public CompletableFuture<CreateEventSubSubscriptionResult> subscribe(TwitchUser broadcaster) {
+  public CompletableFuture<CreateEventSubSubscriptionResult> subscribe(TwitchChannel broadcaster) {
     return connect().thenCompose((_v) -> {
       try {
         Thread.sleep(1000);
@@ -71,7 +72,7 @@ public class EventSubClient implements Listener {
         });
   }
 
-  public List<TwitchUser> getSubscribeList() {
+  public List<TwitchChannel> getSubscribeList() {
     return new ArrayList<>(subscribes.values());
   }
 

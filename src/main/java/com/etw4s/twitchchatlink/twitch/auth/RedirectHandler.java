@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,11 +38,11 @@ class RedirectHandler implements HttpHandler {
         if (template == null) {
           return;
         }
-        String response = new String(template.readAllBytes());
+        String response = new String(template.readAllBytes(), StandardCharsets.UTF_8);
         response = response.replace("${message}", "認証に失敗しました");
         exchange.getResponseHeaders().set("Content-Type", "text/html");
-        exchange.sendResponseHeaders(200, response.getBytes().length);
-        exchange.getResponseBody().write(response.getBytes());
+        exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
+        exchange.getResponseBody().write(response.getBytes(StandardCharsets.UTF_8));
       }
       return;
     }
@@ -51,11 +52,11 @@ class RedirectHandler implements HttpHandler {
       if (template == null) {
         return;
       }
-      String response = new String(template.readAllBytes());
+      String response = new String(template.readAllBytes(), StandardCharsets.UTF_8);
       exchange.getResponseHeaders().set("Content-Type", "text/html");
-      exchange.sendResponseHeaders(200, response.getBytes().length);
+      exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
       OutputStream os = exchange.getResponseBody();
-      os.write(response.getBytes());
+      os.write(response.getBytes(StandardCharsets.UTF_8));
       os.close();
       exchange.close();
     }
@@ -68,11 +69,7 @@ class RedirectHandler implements HttpHandler {
 
       AuthManager.getInstance().saveToken(body.accessToken)
           .whenComplete((result, ex) -> {
-            try (var template = getClass().getResourceAsStream(
-                "/assets/twitchchatlink/template/Page.html")) {
-              if (template == null) {
-                return;
-              }
+            try {
               String resBody = "OK";
               exchange.getResponseHeaders().set("Content-Type", "text/html");
               exchange.sendResponseHeaders(HttpStatus.SC_ACCEPTED, resBody.length());
@@ -80,18 +77,7 @@ class RedirectHandler implements HttpHandler {
               os.write(resBody.getBytes());
               os.close();
             } catch (IOException e) {
-              try {
-                var resBody = "NG";
-                exchange.getResponseHeaders().set("Content-Type", "text/html");
-                exchange.sendResponseHeaders(400, resBody.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(resBody.getBytes());
-                os.close();
-              } catch (IOException exception) {
-                exception.printStackTrace();
-              }
-            } finally {
-              exchange.close();
+              throw new RuntimeException(e);
             }
           });
     }

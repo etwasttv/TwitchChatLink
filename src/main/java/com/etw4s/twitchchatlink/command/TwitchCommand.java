@@ -2,7 +2,7 @@ package com.etw4s.twitchchatlink.command;
 
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
-import com.etw4s.twitchchatlink.model.TwitchUser;
+import com.etw4s.twitchchatlink.model.TwitchChannel;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import com.etw4s.twitchchatlink.twitch.TwitchApiException;
 import com.etw4s.twitchchatlink.twitch.auth.AuthManager;
@@ -17,7 +17,6 @@ import net.minecraft.command.CommandRegistryAccess;
 import net.minecraft.command.CommandSource;
 import net.minecraft.text.ClickEvent;
 import net.minecraft.text.HoverEvent;
-import net.minecraft.text.HoverEvent.Action;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
@@ -62,7 +61,7 @@ public class TwitchCommand {
     var future = TwitchApi.searchChannels(query, false, 8, cursor);
     future.whenComplete(((result, throwable) -> {
       if (throwable != null) {
-        if (throwable instanceof TwitchApiException e) {
+        if (throwable.getCause() instanceof TwitchApiException e) {
           handleTwitchApiException(context, e);
         } else {
           context.getSource().sendFeedback(
@@ -150,14 +149,14 @@ public class TwitchCommand {
 
     future.whenComplete(((getUsersResult, throwable) -> {
       if (throwable != null) {
-        if (throwable instanceof TwitchApiException e) {
+        if (throwable.getCause() instanceof TwitchApiException e) {
           handleTwitchApiException(context, e);
         } else {
           context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
         }
         return;
       }
-      var users = getUsersResult.users();
+      var users = getUsersResult.channels();
       if (users.isEmpty()) {
         context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
         config.setDefaultLogin("");
@@ -177,14 +176,14 @@ public class TwitchCommand {
     var future = TwitchApi.getUsersByLogin(new String[]{login});
     future.whenComplete(((getUsersResult, throwable) -> {
       if (throwable != null) {
-        if (throwable instanceof TwitchApiException e) {
+        if (throwable.getCause() instanceof TwitchApiException e) {
           handleTwitchApiException(context, e);
         } else {
           context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
         }
         return;
       }
-      var users = getUsersResult.users();
+      var users = getUsersResult.channels();
       if (users.isEmpty()) {
         context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
         return;
@@ -192,8 +191,10 @@ public class TwitchCommand {
       var target = users.getFirst();
       config.setDefaultLogin(target.login());
       config.save();
-      context.getSource().sendFeedback(Text.literal(
-          target.getDisplayNameAndLogin() + "をデフォルトの接続先に設定しました"));
+      var text = Text.empty();
+      text.append(getClickableChannelText(target));
+      text.append(Text.literal("をデフォルトの接続先に設定しました").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+      context.getSource().sendFeedback(text);
     }));
     return 1;
   }
@@ -202,7 +203,7 @@ public class TwitchCommand {
     String login = StringArgumentType.getString(context, "login");
     EventSubClient.getInstance().unsubscribe(login).whenComplete((result, throwable) -> {
       if (throwable != null) {
-        if (throwable instanceof TwitchApiException e) {
+        if (throwable.getCause() instanceof TwitchApiException e) {
           handleTwitchApiException(context, e);
         } else {
           context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
@@ -221,7 +222,7 @@ public class TwitchCommand {
     var future = TwitchApi.getUsersByLogin(new String[]{login});
     future.whenComplete(((getUsersResult, throwable) -> {
       if (throwable != null) {
-        if (throwable instanceof TwitchApiException e) {
+        if (throwable.getCause() instanceof TwitchApiException e) {
           handleTwitchApiException(context, e);
         } else {
           context.getSource().sendFeedback(
@@ -230,7 +231,7 @@ public class TwitchCommand {
         }
         return;
       }
-      var users = getUsersResult.users();
+      var users = getUsersResult.channels();
       if (users.isEmpty()) {
         context.getSource()
             .sendFeedback(Text.literal(login + "は見つかりませんでした")
@@ -246,14 +247,17 @@ public class TwitchCommand {
   }
 
   private static void connect(CommandContext<FabricClientCommandSource> context,
-      TwitchUser target) {
+      TwitchChannel target) {
     EventSubClient.getInstance().subscribe(target).whenComplete((result, throwable) -> {
-      if (throwable instanceof TwitchApiException e) {
+      if (throwable.getCause() instanceof TwitchApiException e) {
         handleTwitchApiException(context, e);
         return;
       }
-      context.getSource().sendFeedback(
-          Text.literal(target.getDisplayNameAndLogin() + "のチャットが表示されます"));
+      var text = Text.empty();
+      text.append(getClickableChannelText(target));
+      text.append(Text.literal("のチャットが表示されます")
+          .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+      context.getSource().sendFeedback(text);
     });
   }
 
@@ -280,27 +284,53 @@ public class TwitchCommand {
 
   private static SuggestionProvider<FabricClientCommandSource> getSubscribesSuggestion() {
     return (context, builder) -> CommandSource.suggestMatching(
-        EventSubClient.getInstance().getSubscribeList().stream().map(TwitchUser::login), builder);
+        EventSubClient.getInstance().getSubscribeList().stream().map(TwitchChannel::login),
+        builder);
   }
 
   private static int listHandler(CommandContext<FabricClientCommandSource> context) {
     var subscribes = EventSubClient.getInstance().getSubscribeList();
     if (subscribes.isEmpty()) {
-      var text = Text.literal("現在、接続しているチャンネルはありません");
+      var text = Text.literal("現在、接続しているチャンネルはありません")
+          .setStyle(Style.EMPTY.withColor(Formatting.GOLD));
       context.getSource().sendFeedback(text);
     } else {
-      var text = Text.literal("現在、以下のチャンネルに接続しています\n");
-      for (var broadcaster : subscribes) {
-        text.append(Text.literal(broadcaster.getDisplayNameAndLogin())
-            .setStyle(Style.EMPTY.withHoverEvent(new HoverEvent(Action.SHOW_TEXT,
-                    Text.literal(broadcaster.getChannelUrl()))).withClickEvent(
-                    new ClickEvent(ClickEvent.Action.OPEN_URL, broadcaster.getChannelUrl()))
-                .withColor(Formatting.LIGHT_PURPLE)));
-        text.append(" ");
+      var text = Text.literal("現在、以下のチャンネルに接続しています\n")
+          .setStyle(Style.EMPTY.withColor(Formatting.GOLD));
+      var itr = subscribes.iterator();
+      while (itr.hasNext()) {
+        var channel = itr.next();
+        text.append(getClickableChannelText(channel));
+        if (itr.hasNext()) {
+          text.append(" ");
+        }
       }
       context.getSource().sendFeedback(text);
     }
 
     return 1;
+  }
+
+  private static Text getClickableChannelText(TwitchChannel channel) {
+    var channelInfo = Text.empty();
+    channelInfo.append(
+        Text.literal(channel.displayName()).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
+    channelInfo.append(Text.literal("(").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+    channelInfo.append(Text.literal(channel.login())
+        .setStyle(Style.EMPTY
+            .withColor(Formatting.DARK_AQUA)
+            .withItalic(true)));
+    channelInfo.append(Text.literal(")").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+    channelInfo.setStyle(Style.EMPTY
+        .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+            Text.empty()
+                .append(Text.literal("クリックで"))
+                .append(
+                    Text.literal(channel.getUrl())
+                        .setStyle(Style.EMPTY
+                            .withColor(Formatting.BLUE)))
+                .append(Text.literal("を開く"))))
+        .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, channel.getUrl())));
+    return channelInfo;
   }
 }
