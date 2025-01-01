@@ -43,8 +43,10 @@ public class TwitchApi {
             yield GetUsersResult.success(Arrays.stream(body.data)
                 .map(user -> new TwitchUser(user.id, user.login, user.displayName)).toList());
           }
-          case HttpStatus.SC_BAD_REQUEST -> GetUsersResult.badRequest();
-          case HttpStatus.SC_UNAUTHORIZED -> GetUsersResult.unauthorized();
+          case HttpStatus.SC_BAD_REQUEST ->
+              throw new TwitchApiException("Bad Request", HttpStatus.SC_BAD_REQUEST);
+          case HttpStatus.SC_UNAUTHORIZED ->
+              throw new TwitchApiException("Unauthorized", HttpStatus.SC_UNAUTHORIZED);
           default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
         });
   }
@@ -68,13 +70,13 @@ public class TwitchApi {
         switch (response.statusCode()) {
           case HttpStatus.SC_ACCEPTED -> {
             var body = gson.fromJson(response.body(), CreateEventSubSubscriptionResponse.class);
-            yield CreateEventSubSubscriptionResult.success(body.data[0].id, body.data[0].type);
+            yield new CreateEventSubSubscriptionResult(body.data[0].id, body.data[0].type);
           }
-          case HttpStatus.SC_BAD_REQUEST -> CreateEventSubSubscriptionResult.badRequest();
-          case HttpStatus.SC_UNAUTHORIZED -> CreateEventSubSubscriptionResult.unauthorized();
-          case HttpStatus.SC_FORBIDDEN -> CreateEventSubSubscriptionResult.forbidden();
-          case HttpStatus.SC_TOO_MANY_REQUESTS ->
-              CreateEventSubSubscriptionResult.tooManyRequests();
+          case HttpStatus.SC_BAD_REQUEST,
+               HttpStatus.SC_UNAUTHORIZED,
+               HttpStatus.SC_FORBIDDEN,
+               HttpStatus.SC_TOO_MANY_REQUESTS ->
+              throw new TwitchApiException(response.statusCode());
           default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
         });
   }
@@ -89,10 +91,9 @@ public class TwitchApi {
 
     return client.sendAsync(request, BodyHandlers.ofString())
         .thenApply(response -> switch (response.statusCode()) {
-          case HttpStatus.SC_NO_CONTENT -> DeleteEventSubSubscriptionResult.success();
-          case HttpStatus.SC_BAD_REQUEST -> DeleteEventSubSubscriptionResult.badRequest();
-          case HttpStatus.SC_UNAUTHORIZED -> DeleteEventSubSubscriptionResult.unauthorized();
-          case HttpStatus.SC_NOT_FOUND -> DeleteEventSubSubscriptionResult.notFound();
+          case HttpStatus.SC_NO_CONTENT -> new DeleteEventSubSubscriptionResult();
+          case HttpStatus.SC_BAD_REQUEST, HttpStatus.SC_UNAUTHORIZED,
+               HttpStatus.SC_NOT_FOUND -> throw new TwitchApiException(response.statusCode());
           default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
         });
   }

@@ -6,7 +6,6 @@ import com.etw4s.twitchchatlink.model.ChatFragment;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
-import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult.Status;
 import com.etw4s.twitchchatlink.twitch.DeleteEventSubSubscriptionResult;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
@@ -52,9 +51,7 @@ public class EventSubClient implements Listener {
       }
       return TwitchApi.createChannelChatMessageSubscription(sessionId, broadcaster)
           .thenApply(result -> {
-            if (result.status() == Status.Success) {
-              subscribes.put(result.subscriptionId(), broadcaster);
-            }
+            subscribes.put(result.subscriptionId(), broadcaster);
             return result;
           });
     });
@@ -65,7 +62,7 @@ public class EventSubClient implements Listener {
         .findFirst();
     if (target.isEmpty()) {
       return CompletableFuture.completedFuture(
-          null);
+          new DeleteEventSubSubscriptionResult());
     }
     return TwitchApi.deleteEventSubSubscription(target.get().getKey())
         .thenApply(result -> {

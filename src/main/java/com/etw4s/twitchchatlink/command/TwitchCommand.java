@@ -3,10 +3,8 @@ package com.etw4s.twitchchatlink.command;
 import com.etw4s.twitchchatlink.TwitchChatLink;
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.model.TwitchUser;
-import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
-import com.etw4s.twitchchatlink.twitch.DeleteEventSubSubscriptionResult;
-import com.etw4s.twitchchatlink.twitch.GetUsersResult.Status;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.TwitchApiException;
 import com.etw4s.twitchchatlink.twitch.auth.AuthManager;
 import com.etw4s.twitchchatlink.twitch.eventsub.EventSubClient;
 import com.mojang.brigadier.CommandDispatcher;
@@ -23,6 +21,7 @@ import net.minecraft.text.HoverEvent.Action;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
+import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,9 +62,13 @@ public class TwitchCommand {
     var future = TwitchApi.searchChannels(query, false, 8, cursor);
     future.whenComplete(((result, throwable) -> {
       if (throwable != null) {
-        LOGGER.info("Search Command Exception: {}", throwable.getMessage());
-        context.getSource().sendFeedback(
-            Text.literal("検索できませんでした。").setStyle(Style.EMPTY.withColor(Formatting.RED)));
+        if (throwable instanceof TwitchApiException e) {
+          handleTwitchApiException(context, e);
+        } else {
+          context.getSource().sendFeedback(
+              Text.literal("検索できませんでした。")
+                  .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+        }
         return;
       }
 
@@ -147,35 +150,22 @@ public class TwitchCommand {
 
     future.whenComplete(((getUsersResult, throwable) -> {
       if (throwable != null) {
-        context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
+        if (throwable instanceof TwitchApiException e) {
+          handleTwitchApiException(context, e);
+        } else {
+          context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
+        }
         return;
       }
-      switch (getUsersResult.status()) {
-        case Status.Unauthorized -> {
-          context.getSource().sendFeedback(Text.literal("認証に失敗しました"));
-          AuthManager.getInstance().startAuth();
-        }
-        case Status.Success -> {
-          var users = getUsersResult.users();
-          if (users.isEmpty()) {
-            context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
-            config.setDefaultLogin("");
-            config.save();
-            return;
-          }
-          var target = users.getFirst();
-          EventSubClient.getInstance().subscribe(target).thenAccept(result -> {
-            if (result.status() == CreateEventSubSubscriptionResult.Status.Success) {
-              context.getSource().sendFeedback(
-                  //  Todo: create method to get string: Display(login) of TwitchUser
-                  Text.literal(target.getDisplayNameAndLogin() + "のチャットが表示されます"));
-            } else {
-              context.getSource().sendFeedback(Text.literal(
-                  users.getFirst().displayName() + "のチャットに接続できませんでした"));
-            }
-          });
-        }
+      var users = getUsersResult.users();
+      if (users.isEmpty()) {
+        context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
+        config.setDefaultLogin("");
+        config.save();
+        return;
       }
+      var target = users.getFirst();
+      connect(context, target);
     }));
     return 1;
   }
@@ -183,55 +173,43 @@ public class TwitchCommand {
   private static int setDefaultHandler(CommandContext<FabricClientCommandSource> context) {
     var config = TwitchChatLinkConfig.load();
     String login = StringArgumentType.getString(context, "login");
-    if (login.isEmpty()) {
-      config.setDefaultLogin("");
-      config.save();
-      context.getSource().sendFeedback(Text.literal("デフォルトの接続設定を削除しました"));
-      return 1;
-    }
+
     var future = TwitchApi.getUsersByLogin(new String[]{login});
     future.whenComplete(((getUsersResult, throwable) -> {
       if (throwable != null) {
-        context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
+        if (throwable instanceof TwitchApiException e) {
+          handleTwitchApiException(context, e);
+        } else {
+          context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
+        }
         return;
       }
-      switch (getUsersResult.status()) {
-        case Status.Unauthorized -> {
-          context.getSource().sendFeedback(Text.literal("認証に失敗しました"));
-          AuthManager.getInstance().startAuth();
-        }
-        case Status.Success -> {
-          var users = getUsersResult.users();
-          if (users.isEmpty()) {
-            context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
-            return;
-          }
-          var target = users.getFirst();
-          config.setDefaultLogin(target.login());
-          config.save();
-          context.getSource().sendFeedback(Text.literal(
-              target.getDisplayNameAndLogin() + "をデフォルトの接続先に設定しました"));
-        }
+      var users = getUsersResult.users();
+      if (users.isEmpty()) {
+        context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
+        return;
       }
+      var target = users.getFirst();
+      config.setDefaultLogin(target.login());
+      config.save();
+      context.getSource().sendFeedback(Text.literal(
+          target.getDisplayNameAndLogin() + "をデフォルトの接続先に設定しました"));
     }));
     return 1;
   }
 
   private static int disconnectHandler(CommandContext<FabricClientCommandSource> context) {
     String login = StringArgumentType.getString(context, "login");
-    EventSubClient.getInstance().unsubscribe(login).thenAccept(result -> {
-      switch (result.status()) {
-        case DeleteEventSubSubscriptionResult.Status.Success ->
-            context.getSource().sendFeedback(Text.literal(login + " から切断しました"));
-        case DeleteEventSubSubscriptionResult.Status.BadRequest,
-             DeleteEventSubSubscriptionResult.Status.NotFound ->
-            context.getSource().sendFeedback(Text.literal(login
-                + " から切断できませんでした\nすでに切断しているか、存在しないチャンネルの可能性があります"));
-        case DeleteEventSubSubscriptionResult.Status.Unauthorized -> {
-          context.getSource().sendFeedback(Text.literal("認証に失敗しました"));
-          AuthManager.getInstance().startAuth();
+    EventSubClient.getInstance().unsubscribe(login).whenComplete((result, throwable) -> {
+      if (throwable != null) {
+        if (throwable instanceof TwitchApiException e) {
+          handleTwitchApiException(context, e);
+        } else {
+          context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
         }
+        return;
       }
+      context.getSource().sendFeedback(Text.literal(login + " から切断しました"));
     });
     context.getSource().sendFeedback(Text.literal(login + " から切断します"));
 
@@ -243,36 +221,56 @@ public class TwitchCommand {
     var future = TwitchApi.getUsersByLogin(new String[]{login});
     future.whenComplete(((getUsersResult, throwable) -> {
       if (throwable != null) {
-        context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
+        if (throwable instanceof TwitchApiException e) {
+          handleTwitchApiException(context, e);
+        } else {
+          context.getSource().sendFeedback(
+              Text.literal("接続できませんでした。")
+                  .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+        }
         return;
       }
-      switch (getUsersResult.status()) {
-        case Status.Unauthorized -> {
-          context.getSource().sendFeedback(Text.literal("認証に失敗しました"));
-          AuthManager.getInstance().startAuth();
-        }
-        case Status.Success -> {
-          var users = getUsersResult.users();
-          if (users.isEmpty()) {
-            context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
-            return;
-          }
-          var target = users.getFirst();
-          EventSubClient.getInstance().subscribe(target).thenAccept(result -> {
-            if (result.status() == CreateEventSubSubscriptionResult.Status.Success) {
-              context.getSource().sendFeedback(
-                  Text.literal(target.getDisplayNameAndLogin() + "のチャットが表示されます"));
-            } else {
-              context.getSource().sendFeedback(Text.literal(
-                  users.getFirst().displayName() + "のチャットに接続できませんでした"));
-            }
-          });
-        }
-        default -> context.getSource().sendFeedback(Text.literal("エラーが発生しました"));
+      var users = getUsersResult.users();
+      if (users.isEmpty()) {
+        context.getSource()
+            .sendFeedback(Text.literal(login + "は見つかりませんでした")
+                .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+        return;
       }
+      var target = users.getFirst();
+      TwitchCommand.connect(context, target);
     }));
-    context.getSource().sendFeedback(Text.literal(login + " に接続します"));
+    context.getSource().
+        sendFeedback(Text.literal(login + " に接続します"));
     return 1;
+  }
+
+  private static void connect(CommandContext<FabricClientCommandSource> context,
+      TwitchUser target) {
+    EventSubClient.getInstance().subscribe(target).whenComplete((result, throwable) -> {
+      if (throwable instanceof TwitchApiException e) {
+        handleTwitchApiException(context, e);
+        return;
+      }
+      context.getSource().sendFeedback(
+          Text.literal(target.getDisplayNameAndLogin() + "のチャットが表示されます"));
+    });
+  }
+
+  private static void handleTwitchApiException(CommandContext<FabricClientCommandSource> context,
+      TwitchApiException e) {
+    switch (e.getStatus()) {
+      case HttpStatus.SC_UNAUTHORIZED -> {
+        context.getSource().sendFeedback(Text.literal("認証に失敗しました")
+            .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+        AuthManager.getInstance().startAuth();
+      }
+      case HttpStatus.SC_BAD_REQUEST ->
+          context.getSource().sendFeedback(Text.literal("リクエストが不正です")
+              .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+      default -> context.getSource().sendFeedback(Text.literal("エラーが発生しました")
+          .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+    }
   }
 
   private static int authHandler(CommandContext<FabricClientCommandSource> context) {
