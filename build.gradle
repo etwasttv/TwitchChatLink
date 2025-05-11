@@ -53,7 +53,7 @@ tasks.withType(JavaCompile).configureEach {
     }
 }
 
-def twitchClientId = System.getenv("TWITCH_CLIENT_ID")
+def twitchClientId = project.hasProperty('tId') ? project.property('tId') : null
 tasks.register('generateConfig') {
     doLast {
         assert twitchClientId != null
