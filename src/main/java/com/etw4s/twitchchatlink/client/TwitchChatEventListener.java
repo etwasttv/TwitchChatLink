@@ -4,7 +4,6 @@ import com.etw4s.twitchchatlink.event.TwitchChatEvent.TwitchChatListener;
 import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import net.minecraft.client.MinecraftClient;
-import net.minecraft.text.HoverEvent;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;

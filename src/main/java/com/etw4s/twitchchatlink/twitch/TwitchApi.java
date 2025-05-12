@@ -6,7 +6,6 @@ import com.etw4s.twitchchatlink.TwitchChatLinkContracts;
 import com.etw4s.twitchchatlink.model.TwitchChannel;
 import com.etw4s.twitchchatlink.model.TwitchChannel.LiveStatus;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
-import com.etw4s.twitchchatlink.model.TwitchUser;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
 import com.google.gson.Gson;
 import java.net.URI;
