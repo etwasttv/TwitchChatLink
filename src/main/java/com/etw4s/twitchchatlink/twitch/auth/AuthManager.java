@@ -67,10 +67,10 @@ public class AuthManager {
     return TokenValidator.validate(token)
         .thenApply((result -> {
           if (result.isValidated()) {
-            var config = TwitchChatLinkConfig.load();
+            var config = new TwitchChatLinkConfig();
             config.setToken(token);
             config.setUserId(result.userId());
-            config.save();
+            config.saveConfig();
 
             ClientPlayerEntity player = MinecraftClient.getInstance().player;
             if (player != null) {

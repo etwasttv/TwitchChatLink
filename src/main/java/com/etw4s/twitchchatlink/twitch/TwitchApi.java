@@ -27,8 +27,7 @@ public class TwitchApi {
   private static final Gson gson = TwitchChatLinkGson.getGson();
 
   public static CompletableFuture<GetUsersResult> getUsersByLogin(String[] logins) {
-
-    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     HttpRequest request = HttpRequest.newBuilder().uri(URI.create(
             "https://api.twitch.tv/helix/users?" + String.join("&",
                 Arrays.stream(logins).map(login -> "login=" + login).toList())))
@@ -54,7 +53,7 @@ public class TwitchApi {
 
   public static CompletableFuture<CreateEventSubSubscriptionResult> createChannelChatMessageSubscription(
       String sessionId, TwitchChannel broadcaster) {
-    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     var requestBody = new CreateEventSubSubscriptionRequest();
     requestBody.condition = new ChannelChatMessageCondition(broadcaster.id(), config.getUserId());
     requestBody.version = "1";
@@ -84,7 +83,7 @@ public class TwitchApi {
 
   public static CompletableFuture<DeleteEventSubSubscriptionResult> deleteEventSubSubscription(
       String subscriptionId) {
-    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     var request = HttpRequest.newBuilder()
         .uri(URI.create("https://api.twitch.tv/helix/eventsub/subscriptions?id=" + subscriptionId))
         .header("Authorization", "Bearer " + config.getToken())
@@ -100,7 +99,7 @@ public class TwitchApi {
   }
 
   public static CompletableFuture<GetEmoteSetResult> getEmoteSet(String emoteSetId) {
-    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     var request = HttpRequest.newBuilder()
         .uri(URI.create("https://api.twitch.tv/helix/chat/emotes/set?emote_set_id=" + emoteSetId))
         .header("Authorization", "Bearer " + config.getToken())
@@ -123,7 +122,7 @@ public class TwitchApi {
 
   public static CompletableFuture<SearchChannelsResult> searchChannels(String query,
       boolean liveOnly, int count, String after) throws TwitchApiException {
-    TwitchChatLinkConfig config = TwitchChatLinkConfig.load();
+    TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     StringBuilder url = new StringBuilder("https://api.twitch.tv/helix/search/channels");
     url.append("?query=").append(query);
     url.append("&live_only=").append(liveOnly);

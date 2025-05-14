@@ -1,68 +1,82 @@
 package com.etw4s.twitchchatlink;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Properties;
+
 import net.fabricmc.loader.api.FabricLoader;
 
 public class TwitchChatLinkConfig {
 
-  private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
-  private static final Path path = FabricLoader.getInstance().getConfigDir()
-      .resolve("twitch-chat-link.json");
+  private final Path path = FabricLoader.getInstance().getConfigDir()
+      .resolve("twitchchatlink.properties");
+  private final Properties properties = new Properties();
 
-  private String token;
-  private String userId;
-  private String defaultLogin;
-
-  private TwitchChatLinkConfig() {
+  public TwitchChatLinkConfig() {
+    loadConfig();
   }
 
-  public static TwitchChatLinkConfig load() {
-    if (Files.exists(path)) {
-      try {
-        String json = Files.readString(path);
-        return gson.fromJson(json, TwitchChatLinkConfig.class);
-      } catch (IOException e) {
-        e.printStackTrace();
-      }
+  public void loadConfig() {
+    if (!Files.exists(path)) {
+      createDefaultConfig();
+      return;
     }
-    return new TwitchChatLinkConfig();
-  }
 
-  public void save() {
-    try {
-      String json = gson.toJson(this);
-      Files.createDirectories(path.getParent());
-      Files.writeString(path, json);
+    try (InputStream input = Files.newInputStream(path)) {
+      properties.load(input);
     } catch (IOException e) {
       e.printStackTrace();
     }
   }
 
+  public void saveConfig() {
+    if (!Files.exists(path.getParent())) {
+      try {
+        Files.createDirectories(path.getParent());
+      } catch (IOException e) {
+        e.printStackTrace();
+        return;
+      }
+    }
+
+    try (OutputStream outputStream = Files.newOutputStream(path)) {
+      properties.store(outputStream, "Twitch Chat Link Config");
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private void createDefaultConfig() {
+    properties.setProperty("token", "");
+    properties.setProperty("userId", "");
+    properties.setProperty("defaultLogin", "");
+    saveConfig();
+  }
+
   public void setToken(String token) {
-    this.token = token;
+    properties.setProperty("token", token);
   }
 
   public void setUserId(String userId) {
-    this.userId = userId;
+    properties.setProperty("userId", userId);
   }
 
   public void setDefaultLogin(String login) {
-    this.defaultLogin = login;
+    properties.setProperty("defaultLogin", login);
   }
 
   public String getToken() {
-    return token;
+    return properties.getProperty("token");
   }
 
   public String getUserId() {
-    return userId;
+    return properties.getProperty("userId");
   }
 
   public String getDefaultLogin() {
-    return defaultLogin;
+    return properties.getProperty("defaultLogin");
   }
 }

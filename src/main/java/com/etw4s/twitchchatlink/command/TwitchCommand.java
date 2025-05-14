@@ -142,7 +142,7 @@ public class TwitchCommand {
   }
 
   private static int connectToDefault(CommandContext<FabricClientCommandSource> context) {
-    var config = TwitchChatLinkConfig.load();
+    TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     String login = config.getDefaultLogin();
     if (login == null || login.isEmpty()) {
       context.getSource().sendFeedback(Text.literal("デフォルトの接続先が設定されていません"));
@@ -163,7 +163,6 @@ public class TwitchCommand {
       if (users.isEmpty()) {
         context.getSource().sendFeedback(Text.literal(login + "は見つかりませんでした"));
         config.setDefaultLogin("");
-        config.save();
         return;
       }
       var target = users.getFirst();
@@ -173,7 +172,7 @@ public class TwitchCommand {
   }
 
   private static int setDefaultHandler(CommandContext<FabricClientCommandSource> context) {
-    var config = TwitchChatLinkConfig.load();
+    TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     String login = StringArgumentType.getString(context, "login");
 
     var future = TwitchApi.getUsersByLogin(new String[]{login});
@@ -193,7 +192,6 @@ public class TwitchCommand {
       }
       var target = users.getFirst();
       config.setDefaultLogin(target.login());
-      config.save();
       var text = Text.empty();
       text.append(getClickableChannelText(target));
       text.append(Text.literal("をデフォルトの接続先に設定しました")
@@ -234,37 +232,37 @@ public class TwitchCommand {
   }
 
   private static int connectHandler(CommandContext<FabricClientCommandSource> context) {
-    String login = StringArgumentType.getString(context, "login");
-    var future = TwitchApi.getUsersByLogin(new String[]{login});
-    future.whenComplete(((getUsersResult, throwable) -> {
-      if (throwable != null) {
-        if (throwable.getCause() instanceof TwitchApiException e) {
-          handleTwitchApiException(context, e);
-        } else {
-          context.getSource().sendFeedback(
-              Text.literal("接続できませんでした。")
-                  .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+      String login = StringArgumentType.getString(context, "login");
+      var future = TwitchApi.getUsersByLogin(new String[]{login});
+      future.whenComplete(((getUsersResult, throwable) -> {
+        if (throwable != null) {
+          if (throwable.getCause() instanceof TwitchApiException e) {
+            handleTwitchApiException(context, e);
+          } else {
+              context.getSource().sendFeedback(
+                  Text.literal("接続できませんでした。")
+                      .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+          }
+          return;
         }
-        return;
-      }
-      var users = getUsersResult.channels();
-      if (users.isEmpty()) {
-        var response = Text.empty();
-        response.append(Text.literal(login).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
-        response.append(Text.literal("は見つかりませんでした")
-            .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+        var users = getUsersResult.channels();
+        if (users.isEmpty()) {
+          var response = Text.empty();
+          response.append(Text.literal(login).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
+          response.append(Text.literal("は見つかりませんでした")
+              .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+            context.getSource().sendFeedback(response);
+          return;
+        }
+        var target = users.getFirst();
+        TwitchCommand.connect(context, target);
+      }));
+      var response = Text.empty();
+      response.append(
+          Text.literal(login).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(true)));
+      response.append(
+          Text.literal("に接続します").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
         context.getSource().sendFeedback(response);
-        return;
-      }
-      var target = users.getFirst();
-      TwitchCommand.connect(context, target);
-    }));
-    var response = Text.empty();
-    response.append(
-        Text.literal(login).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(true)));
-    response.append(
-        Text.literal("に接続します").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
-    context.getSource().sendFeedback(response);
     return 1;
   }
 
@@ -275,9 +273,9 @@ public class TwitchCommand {
         if (throwable.getCause() instanceof TwitchApiException e) {
           handleTwitchApiException(context, e);
         } else {
-          context.getSource().sendFeedback(
-              Text.literal("接続できませんでした。")
-                  .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+            context.getSource().sendFeedback(
+                Text.literal("接続できませんでした。")
+                    .setStyle(Style.EMPTY.withColor(Formatting.RED)));
         }
         return;
       }
@@ -285,7 +283,7 @@ public class TwitchCommand {
       text.append(getClickableChannelText(target));
       text.append(Text.literal("のチャットが表示されます")
           .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
-      context.getSource().sendFeedback(text);
+        context.getSource().sendFeedback(text);
     });
   }
 
