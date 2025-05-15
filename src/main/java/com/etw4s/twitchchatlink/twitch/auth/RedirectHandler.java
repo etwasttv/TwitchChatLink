@@ -55,10 +55,9 @@ class RedirectHandler implements HttpHandler {
       String response = new String(template.readAllBytes(), StandardCharsets.UTF_8);
       exchange.getResponseHeaders().set("Content-Type", "text/html");
       exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-      OutputStream os = exchange.getResponseBody();
-      os.write(response.getBytes(StandardCharsets.UTF_8));
-      os.close();
-      exchange.close();
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(response.getBytes(StandardCharsets.UTF_8));
+      }
     }
   }
 
