@@ -8,11 +8,22 @@ import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 public class TwitchChatLinkClient implements ClientModInitializer {
 
+  private final TwitchCommand command;
+
+  public TwitchChatLinkClient() {
+    this.command = new TwitchCommand();
+  }
+
   @Override
   public void onInitializeClient() {
-    ClientCommandRegistrationCallback.EVENT.register(TwitchCommand::register);
+    registerCommands();
     ClientTickEvents.START_WORLD_TICK.register(EmoteManager.getInstance());
     TwitchChatEvent.EVENTS.register(new TwitchChatEventListener());
     TwitchChatEvent.EVENTS.register(EmoteManager.getInstance());
+  }
+
+  private void registerCommands() {
+    ClientCommandRegistrationCallback.EVENT
+        .register((dispatcher, registryAcce) -> this.command.register(dispatcher, registryAcce));
   }
 }

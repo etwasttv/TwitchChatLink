@@ -23,8 +23,7 @@ import org.apache.http.HttpStatus;
 
 public class TwitchCommand {
 
-  public static void register(CommandDispatcher<FabricClientCommandSource> dispatcher,
-      CommandRegistryAccess access) {
+  public void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
     dispatcher.register(ClientCommandManager.literal("twitch")
         .then(ClientCommandManager.literal("auth").executes(TwitchCommand::authHandler))
         .then(ClientCommandManager.literal("search")
