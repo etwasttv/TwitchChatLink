@@ -34,7 +34,6 @@ public class TokenValidator {
 
   private static class ValidateResponse {
 
-    String clientId;
     String login;
     String userId;
   }

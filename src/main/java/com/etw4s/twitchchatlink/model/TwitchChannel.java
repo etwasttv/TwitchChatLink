@@ -4,8 +4,7 @@ public record TwitchChannel(
     String id,
     String login,
     String displayName,
-    LiveStatus liveStatus
-) {
+    LiveStatus liveStatus) {
   public String getUrl() {
     return "https://www.twitch.tv/" + login;
   }
