@@ -287,7 +287,8 @@ public class TwitchCommand {
       case HttpStatus.SC_UNAUTHORIZED -> {
         context.getSource().sendFeedback(Text.literal("認証に失敗しました")
             .setStyle(Style.EMPTY.withColor(Formatting.RED)));
-        AuthManager.getInstance().startAuth();
+        AuthManager authManager = new AuthManager();
+        authManager.startAuth();
       }
       case HttpStatus.SC_BAD_REQUEST ->
         context.getSource().sendFeedback(Text.literal("リクエストが不正です")
@@ -298,7 +299,8 @@ public class TwitchCommand {
   }
 
   private static int authHandler(CommandContext<FabricClientCommandSource> context) {
-    AuthManager.getInstance().startAuth();
+    AuthManager authManager = new AuthManager();
+    authManager.startAuth();
     return 1;
   }
 

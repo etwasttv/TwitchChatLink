@@ -6,6 +6,9 @@ import com.etw4s.twitchchatlink.twitch.eventsub.EventSubClient;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.client.world.ClientWorld;
+
+import java.util.concurrent.CompletableFuture;
+
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,7 +25,15 @@ public class MinecraftClinetMixin {
   @Unique
   Logger LOGGER = LoggerFactory.getLogger(TwitchChatLink.MOD_NAME);
 
-  @Shadow @Nullable public ClientWorld world;
+  @Shadow
+  @Nullable
+  public ClientWorld world;
+
+  private AuthManager authManager;
+
+  public MinecraftClinetMixin() {
+    this.authManager = new AuthManager();
+  }
 
   @Inject(method = "disconnect(Lnet/minecraft/client/gui/screen/Screen;Z)V", at = @At("HEAD"))
   private void onDisconnect(Screen disconnectionScreen, boolean transferring, CallbackInfo ci) {
@@ -30,7 +41,9 @@ public class MinecraftClinetMixin {
       return;
     }
     LOGGER.info("onDisconnect");
-    AuthManager.getInstance().stopAuth();
+    CompletableFuture.runAsync(() -> {
+      authManager.stopAuth();
+    });
     EventSubClient.getInstance().disconnect();
   }
 }

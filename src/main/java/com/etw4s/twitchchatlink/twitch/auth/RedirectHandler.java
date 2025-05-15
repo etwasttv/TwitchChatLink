@@ -18,6 +18,12 @@ class RedirectHandler implements HttpHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwitchChatLink.MOD_NAME);
 
+  private AuthManager authManager;
+
+  public RedirectHandler() {
+    this.authManager = new AuthManager();
+  }
+
   @Override
   public void handle(HttpExchange exchange) throws IOException {
     String method = exchange.getRequestMethod();
@@ -68,7 +74,7 @@ class RedirectHandler implements HttpHandler {
 
       try {
         String resBody;
-        if (AuthManager.getInstance().saveToken(body.accessToken)) {
+        if (authManager.saveToken(body.accessToken)) {
           resBody = "OK";
           exchange.sendResponseHeaders(HttpStatus.SC_ACCEPTED, resBody.length());
         } else {

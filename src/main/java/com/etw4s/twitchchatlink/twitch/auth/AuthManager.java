@@ -18,15 +18,10 @@ import net.minecraft.util.Formatting;
 
 public class AuthManager {
 
-  private static final AuthManager instance = new AuthManager();
   private final TokenValidator tokenValidator = new TokenValidator();
   private final AuthRedirectServer authRedirectServer;
 
-  public static AuthManager getInstance() {
-    return instance;
-  }
-
-  private AuthManager() {
+  public AuthManager() {
     this.authRedirectServer = AuthRedirectServer.getInstance();
   }
 
