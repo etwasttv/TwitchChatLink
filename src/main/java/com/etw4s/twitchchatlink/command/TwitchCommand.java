@@ -25,27 +25,27 @@ public class TwitchCommand {
 
   public void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
     dispatcher.register(ClientCommandManager.literal("twitch")
-        .then(ClientCommandManager.literal("auth").executes(TwitchCommand::authHandler))
+        .then(ClientCommandManager.literal("auth").executes(c -> this.authHandler(c)))
         .then(ClientCommandManager.literal("search")
             .then(ClientCommandManager.argument("query", StringArgumentType.greedyString())
-                .executes(TwitchCommand::searchHandler)
+                .executes(c -> this.searchHandler(c))
                 .then(ClientCommandManager.argument("cursor", StringArgumentType.string())
-                    .executes(TwitchCommand::searchHandler))))
+                    .executes(c -> this.searchHandler(c)))))
         .then(ClientCommandManager.literal("connect")
-            .executes(TwitchCommand::connectToDefault)
+            .executes(c -> this.connectToDefault(c))
             .then(ClientCommandManager.argument("login", StringArgumentType.word())
-                .executes(TwitchCommand::connectHandler)))
-        .then(ClientCommandManager.literal("list").executes(TwitchCommand::listHandler))
+                .executes(c -> this.connectHandler(c))))
+        .then(ClientCommandManager.literal("list").executes(c -> this.listHandler(c)))
         .then(ClientCommandManager.literal("disconnect")
             .then(ClientCommandManager.argument("login", StringArgumentType.word())
                 .suggests(getSubscribesSuggestion())
-                .executes(TwitchCommand::disconnectHandler)))
+                .executes(c -> this.disconnectHandler(c))))
         .then(ClientCommandManager.literal("set-default")
             .then(ClientCommandManager.argument("login", StringArgumentType.word())
-                .executes(TwitchCommand::setDefaultHandler))));
+                .executes(c -> this.setDefaultHandler(c)))));
   }
 
-  private static int searchHandler(CommandContext<FabricClientCommandSource> context) {
+  private int searchHandler(CommandContext<FabricClientCommandSource> context) {
     String query = StringArgumentType.getString(context, "query");
     String cursor = null;
     try {
@@ -135,7 +135,7 @@ public class TwitchCommand {
     return 1;
   }
 
-  private static int connectToDefault(CommandContext<FabricClientCommandSource> context) {
+  private int connectToDefault(CommandContext<FabricClientCommandSource> context) {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     String login = config.getDefaultLogin();
     if (login == null || login.isEmpty()) {
@@ -165,7 +165,7 @@ public class TwitchCommand {
     return 1;
   }
 
-  private static int setDefaultHandler(CommandContext<FabricClientCommandSource> context) {
+  private int setDefaultHandler(CommandContext<FabricClientCommandSource> context) {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     String login = StringArgumentType.getString(context, "login");
 
@@ -195,7 +195,7 @@ public class TwitchCommand {
     return 1;
   }
 
-  private static int disconnectHandler(CommandContext<FabricClientCommandSource> context) {
+  private int disconnectHandler(CommandContext<FabricClientCommandSource> context) {
     String login = StringArgumentType.getString(context, "login");
     var response = Text.empty();
     response.append(
@@ -225,7 +225,7 @@ public class TwitchCommand {
     return 1;
   }
 
-  private static int connectHandler(CommandContext<FabricClientCommandSource> context) {
+  private int connectHandler(CommandContext<FabricClientCommandSource> context) {
     String login = StringArgumentType.getString(context, "login");
     var future = TwitchApi.getUsersByLogin(new String[] { login });
     future.whenComplete(((getUsersResult, throwable) -> {
@@ -249,7 +249,7 @@ public class TwitchCommand {
         return;
       }
       var target = users.getFirst();
-      TwitchCommand.connect(context, target);
+      this.connect(context, target);
     }));
     var response = Text.empty();
     response.append(
@@ -260,7 +260,7 @@ public class TwitchCommand {
     return 1;
   }
 
-  private static void connect(CommandContext<FabricClientCommandSource> context,
+  private void connect(CommandContext<FabricClientCommandSource> context,
       TwitchChannel target) {
     EventSubClient.getInstance().subscribe(target).whenComplete((result, throwable) -> {
       if (throwable != null) {
@@ -281,7 +281,7 @@ public class TwitchCommand {
     });
   }
 
-  private static void handleTwitchApiException(CommandContext<FabricClientCommandSource> context,
+  private void handleTwitchApiException(CommandContext<FabricClientCommandSource> context,
       TwitchApiException e) {
     switch (e.getStatus()) {
       case HttpStatus.SC_UNAUTHORIZED -> {
@@ -298,19 +298,19 @@ public class TwitchCommand {
     }
   }
 
-  private static int authHandler(CommandContext<FabricClientCommandSource> context) {
+  private int authHandler(CommandContext<FabricClientCommandSource> context) {
     AuthManager authManager = new AuthManager();
     authManager.startAuth();
     return 1;
   }
 
-  private static SuggestionProvider<FabricClientCommandSource> getSubscribesSuggestion() {
+  private SuggestionProvider<FabricClientCommandSource> getSubscribesSuggestion() {
     return (context, builder) -> CommandSource.suggestMatching(
         EventSubClient.getInstance().getSubscribeList().stream().map(TwitchChannel::login),
         builder);
   }
 
-  private static int listHandler(CommandContext<FabricClientCommandSource> context) {
+  private int listHandler(CommandContext<FabricClientCommandSource> context) {
     var subscribes = EventSubClient.getInstance().getSubscribeList();
     if (subscribes.isEmpty()) {
       var text = Text.literal("現在、接続しているチャンネルはありません")
@@ -354,7 +354,7 @@ public class TwitchCommand {
     return 1;
   }
 
-  private static Text getClickableChannelText(TwitchChannel channel) {
+  private Text getClickableChannelText(TwitchChannel channel) {
     var channelInfo = Text.empty();
     channelInfo.append(
         Text.literal(channel.displayName()).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
