@@ -18,6 +18,12 @@ class RedirectHandler implements HttpHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwitchChatLink.MOD_NAME);
 
+  private AuthManager authManager;
+
+  public RedirectHandler() {
+    this.authManager = new AuthManager();
+  }
+
   @Override
   public void handle(HttpExchange exchange) throws IOException {
     String method = exchange.getRequestMethod();
@@ -55,10 +61,9 @@ class RedirectHandler implements HttpHandler {
       String response = new String(template.readAllBytes(), StandardCharsets.UTF_8);
       exchange.getResponseHeaders().set("Content-Type", "text/html");
       exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-      OutputStream os = exchange.getResponseBody();
-      os.write(response.getBytes(StandardCharsets.UTF_8));
-      os.close();
-      exchange.close();
+      try (OutputStream os = exchange.getResponseBody()) {
+        os.write(response.getBytes(StandardCharsets.UTF_8));
+      }
     }
   }
 
@@ -67,19 +72,22 @@ class RedirectHandler implements HttpHandler {
       Gson gson = TwitchChatLinkGson.getGson();
       var body = gson.fromJson(new InputStreamReader(input), TokenPostBody.class);
 
-      AuthManager.getInstance().saveToken(body.accessToken)
-          .whenComplete((result, ex) -> {
-            try {
-              String resBody = "OK";
-              exchange.getResponseHeaders().set("Content-Type", "text/html");
-              exchange.sendResponseHeaders(HttpStatus.SC_ACCEPTED, resBody.length());
-              OutputStream os = exchange.getResponseBody();
-              os.write(resBody.getBytes());
-              os.close();
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          });
+      try {
+        String resBody;
+        if (authManager.saveToken(body.accessToken)) {
+          resBody = "OK";
+          exchange.sendResponseHeaders(HttpStatus.SC_ACCEPTED, resBody.length());
+        } else {
+          resBody = "NG";
+          exchange.sendResponseHeaders(HttpStatus.SC_BAD_REQUEST, resBody.length());
+        }
+        exchange.getResponseHeaders().set("Content-Type", "text/html");
+        try (OutputStream os = exchange.getResponseBody()) {
+          os.write(resBody.getBytes(StandardCharsets.UTF_8));
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }
