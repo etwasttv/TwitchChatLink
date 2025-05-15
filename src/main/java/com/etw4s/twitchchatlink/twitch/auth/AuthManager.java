@@ -69,20 +69,20 @@ public class AuthManager {
 
   public boolean saveToken(String token) {
     ValidationResult result = tokenValidator.validate(token);
-    if (result.isValidated()) {
-      var config = new TwitchChatLinkConfig();
-      config.setToken(token);
-      config.setUserId(result.userId());
-      config.saveConfig();
+    if (!result.isValidated())
+      return false;
 
-      ClientPlayerEntity player = MinecraftClient.getInstance().player;
-      if (player != null) {
-        MutableText text = Text.literal("認証に成功しました!");
-        player.sendMessage(text);
-      }
-      return true;
+    var config = new TwitchChatLinkConfig();
+    config.setToken(token);
+    config.setUserId(result.userId());
+    config.saveConfig();
+
+    ClientPlayerEntity player = MinecraftClient.getInstance().player;
+    if (player != null) {
+      MutableText text = Text.literal("認証に成功しました!");
+      player.sendMessage(text);
     }
-    return false;
+    return true;
   }
 
   private String getAuthUrl() {
