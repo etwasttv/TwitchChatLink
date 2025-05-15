@@ -67,19 +67,25 @@ class RedirectHandler implements HttpHandler {
       Gson gson = TwitchChatLinkGson.getGson();
       var body = gson.fromJson(new InputStreamReader(input), TokenPostBody.class);
 
-      AuthManager.getInstance().saveToken(body.accessToken)
-          .whenComplete((result, ex) -> {
-            try {
-              String resBody = "OK";
-              exchange.getResponseHeaders().set("Content-Type", "text/html");
-              exchange.sendResponseHeaders(HttpStatus.SC_ACCEPTED, resBody.length());
-              OutputStream os = exchange.getResponseBody();
-              os.write(resBody.getBytes());
-              os.close();
-            } catch (IOException e) {
-              throw new RuntimeException(e);
-            }
-          });
+      try {
+        if (AuthManager.getInstance().saveToken(body.accessToken)) {
+          String resBody = "OK";
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+          exchange.sendResponseHeaders(HttpStatus.SC_ACCEPTED, resBody.length());
+          OutputStream os = exchange.getResponseBody();
+          os.write(resBody.getBytes());
+          os.close();
+        } else {
+          String resBody = "NG";
+          exchange.getResponseHeaders().set("Content-Type", "text/html");
+          exchange.sendResponseHeaders(HttpStatus.SC_BAD_REQUEST, resBody.length());
+          OutputStream os = exchange.getResponseBody();
+          os.write(resBody.getBytes());
+          os.close();
+        }
+      } catch (IOException e) {
+        throw new RuntimeException(e);
+      }
     }
   }
 }

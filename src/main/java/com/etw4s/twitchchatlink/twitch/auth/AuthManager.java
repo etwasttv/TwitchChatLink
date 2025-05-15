@@ -2,10 +2,11 @@ package com.etw4s.twitchchatlink.twitch.auth;
 
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.TwitchChatLinkContracts;
+import com.etw4s.twitchchatlink.twitch.auth.TokenValidator.ValidationResult;
+
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.CompletableFuture;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
 import net.minecraft.text.ClickEvent;
@@ -18,6 +19,7 @@ import net.minecraft.util.Formatting;
 public class AuthManager {
 
   private static final AuthManager instance = new AuthManager();
+  private final TokenValidator tokenValidator = new TokenValidator();
 
   public static AuthManager getInstance() {
     return instance;
@@ -63,24 +65,22 @@ public class AuthManager {
     player.sendMessage(full);
   }
 
-  public CompletableFuture<Boolean> saveToken(String token) {
-    return TokenValidator.validate(token)
-        .thenApply((result -> {
-          if (result.isValidated()) {
-            var config = new TwitchChatLinkConfig();
-            config.setToken(token);
-            config.setUserId(result.userId());
-            config.saveConfig();
+  public boolean saveToken(String token) {
+    ValidationResult result = tokenValidator.validate(token);
+    if (result.isValidated()) {
+      var config = new TwitchChatLinkConfig();
+      config.setToken(token);
+      config.setUserId(result.userId());
+      config.saveConfig();
 
-            ClientPlayerEntity player = MinecraftClient.getInstance().player;
-            if (player != null) {
-              MutableText text = Text.literal("認証に成功しました!");
-              player.sendMessage(text);
-            }
-            return true;
-          }
-          return false;
-        }));
+      ClientPlayerEntity player = MinecraftClient.getInstance().player;
+      if (player != null) {
+        MutableText text = Text.literal("認証に成功しました!");
+        player.sendMessage(text);
+      }
+      return true;
+    }
+    return false;
   }
 
   private String getAuthUrl() {
