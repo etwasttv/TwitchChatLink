@@ -12,7 +12,6 @@ import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.twitch.GetEmoteSetResult.Status;
 import com.etw4s.twitchchatlink.twitch.TwitchApi;
 import java.awt.AlphaComposite;
-import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -207,7 +206,6 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
             var disposalMethod = getDisposalMethod(metadata);
             LOGGER.info("frame {}: {}x{} {}", i, currentFrame.getWidth(), currentFrame.getHeight(),
                 disposalMethod.name());
-            var background = getBackgroundColor(metadata);
             int delay = getFrameDelay(metadata);
             int[] pos = getFramePosition(metadata);
             totalDelay += delay;
@@ -323,49 +321,6 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
 
     private enum DisposableMethod {
       DoNotDispose, RestoreToBackground, RestoreToPrevious, Nothing,
-    }
-
-    private static Color getBackgroundColor(IIOMetadata metadata) {
-      String nativeFormat = metadata.getNativeMetadataFormatName();
-      javax.imageio.metadata.IIOMetadataNode root = (javax.imageio.metadata.IIOMetadataNode) metadata.getAsTree(
-          nativeFormat);
-
-      // "LogicalScreenDescriptor" ノードを探す
-      javax.imageio.metadata.IIOMetadataNode logicalScreenDescriptor =
-          (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName(
-              "LogicalScreenDescriptor").item(0);
-
-      if (logicalScreenDescriptor == null) {
-        return null;
-      }
-
-      // 背景色インデックスを取得
-      String bgColorIndexStr = logicalScreenDescriptor.getAttribute("backgroundColorIndex");
-      int bgColorIndex = Integer.parseInt(bgColorIndexStr);
-
-      // グローバルカラーテーブルを取得
-      javax.imageio.metadata.IIOMetadataNode globalColorTable =
-          (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName("GlobalColorTable")
-              .item(0);
-
-      if (globalColorTable == null) {
-        return null;
-      }
-
-      // パレット配列から背景色を取得
-      javax.imageio.metadata.IIOMetadataNode colorEntry =
-          (javax.imageio.metadata.IIOMetadataNode) globalColorTable.getElementsByTagName(
-              "ColorEntry").item(bgColorIndex);
-
-      if (colorEntry == null) {
-        return null;
-      }
-
-      int red = Integer.parseInt(colorEntry.getAttribute("red"));
-      int green = Integer.parseInt(colorEntry.getAttribute("green"));
-      int blue = Integer.parseInt(colorEntry.getAttribute("blue"));
-
-      return new Color(red, green, blue);
     }
 
     private static int[] getFramePosition(IIOMetadata metadata) {

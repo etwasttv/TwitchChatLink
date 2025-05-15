@@ -1,7 +1,7 @@
 package com.etw4s.twitchchatlink.model;
 
 public record TwitchEmoteInfo(String id, String name, String[] format, String[] scale,
-                              String[] theme, String template) {
+    String[] theme, String template) {
 
   public String getUrl(String format, String scale, String theme) {
     return template.replace("{{id}}", id)

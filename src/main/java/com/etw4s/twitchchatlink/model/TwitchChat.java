@@ -10,12 +10,13 @@ public class TwitchChat {
   List<ChatFragment> fragments;
   String color;
 
-  public TwitchChat(TwitchUser broadcaster, TwitchUser chatter, String text, List<ChatFragment> fragments, String color) {
+  public TwitchChat(TwitchUser broadcaster, TwitchUser chatter, String text, List<ChatFragment> fragments,
+      String color) {
     this.broadcaster = broadcaster;
     this.chatter = chatter;
     this.text = text;
     this.fragments = fragments;
-    //  Todo: バリデーション
+    // Todo: バリデーション
     this.color = color == null || color.length() != 7 ? "#a970ff" : color;
   }
 
