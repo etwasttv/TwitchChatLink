@@ -20,12 +20,14 @@ public class AuthManager {
 
   private static final AuthManager instance = new AuthManager();
   private final TokenValidator tokenValidator = new TokenValidator();
+  private final AuthRedirectServer authRedirectServer;
 
   public static AuthManager getInstance() {
     return instance;
   }
 
   private AuthManager() {
+    this.authRedirectServer = AuthRedirectServer.getInstance();
   }
 
   public void startAuth() {
@@ -34,7 +36,7 @@ public class AuthManager {
       return;
     }
     try {
-      AuthRedirectServer.getInstance().startRedirectServer();
+      this.authRedirectServer.startRedirectServer();
       sendAuthUrl(client.player);
     } catch (IOException e) {
       throw new RuntimeException(e);
@@ -42,7 +44,7 @@ public class AuthManager {
   }
 
   public void stopAuth() {
-    AuthRedirectServer.getInstance().stopRedirectServer();
+    this.authRedirectServer.stopRedirectServer();
   }
 
   private void sendAuthUrl(ClientPlayerEntity player) {
@@ -86,7 +88,7 @@ public class AuthManager {
   private String getAuthUrl() {
     return "https://id.twitch.tv/oauth2/authorize?client_id="
         + TwitchChatLinkContracts.TWITCH_CLIENT_ID
-        + "&redirect_uri=" + AuthRedirectServer.getInstance().getRedirectUrl()
+        + "&redirect_uri=" + this.authRedirectServer.getRedirectUrl()
         + "&scope=" + URLEncoder.encode("user:read:chat", StandardCharsets.UTF_8)
         + "&response_type=token";
   }
