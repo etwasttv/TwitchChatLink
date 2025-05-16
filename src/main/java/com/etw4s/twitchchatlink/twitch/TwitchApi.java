@@ -144,7 +144,7 @@ public class TwitchApi {
         });
   }
 
-  public static CompletableFuture<SearchChannelsResult> searchChannels(String query,
+  public static SearchChannelsResult searchChannels(String query,
       boolean liveOnly, int count, String after) throws TwitchApiException {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     StringBuilder url = new StringBuilder("https://api.twitch.tv/helix/search/channels");
@@ -159,22 +159,28 @@ public class TwitchApi {
         .header("Authorization", "Bearer " + config.getToken())
         .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID)
         .GET().build();
-    return client.sendAsync(request, BodyHandlers.ofString())
-        .thenApply(response -> switch (response.statusCode()) {
-          case HttpStatus.SC_OK -> {
-            var body = gson.fromJson(response.body(), SearchChannelsResponse.class);
-            var channels = Arrays.stream(body.data).map(data -> new TwitchChannel(data.id(),
-                data.broadcasterLogin(), data.displayName(),
-                data.isLive() ? LiveStatus.Online : LiveStatus.Offline)).toList();
-            var cursor = body.pagination != null ? body.pagination.cursor() : null;
-            yield new SearchChannelsResult(channels, cursor);
-          }
-          case HttpStatus.SC_BAD_REQUEST ->
-            throw new TwitchApiException("BadRequest", HttpStatus.SC_BAD_REQUEST);
-          case HttpStatus.SC_UNAUTHORIZED ->
-            throw new TwitchApiException("Unauthorized", HttpStatus.SC_UNAUTHORIZED);
-          default ->
-            throw new IllegalStateException("Unexpected value: " + response.statusCode());
-        });
+
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, BodyHandlers.ofString());
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new TwitchApiException("Failed to send request");
+    }
+
+    if (response.statusCode() == HttpStatus.SC_OK) {
+      var body = gson.fromJson(response.body(), SearchChannelsResponse.class);
+      var channels = Arrays.stream(body.data).map(data -> new TwitchChannel(data.id(),
+          data.broadcasterLogin(), data.displayName(),
+          data.isLive() ? LiveStatus.Online : LiveStatus.Offline)).toList();
+      var cursor = body.pagination != null ? body.pagination.cursor() : null;
+      return new SearchChannelsResult(channels, cursor);
+    } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
+      throw new TwitchApiException("Bad Request", HttpStatus.SC_BAD_REQUEST);
+    } else if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
+      throw new TwitchApiException("Unauthorized", HttpStatus.SC_UNAUTHORIZED);
+    } else {
+      throw new IllegalStateException("Unexpected value: " + response.statusCode());
+    }
   }
 }

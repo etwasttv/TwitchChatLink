@@ -59,27 +59,28 @@ public class TwitchCommand {
 
   private int searchHandler(CommandContext<FabricClientCommandSource> context) {
     String query = StringArgumentType.getString(context, "query");
-    String cursor = null;
+    String cursorValue = null;
     try {
-      cursor = StringArgumentType.getString(context, "cursor");
+      cursorValue = StringArgumentType.getString(context, "cursor");
     } catch (IllegalArgumentException ignored) {
     }
-    var future = TwitchApi.searchChannels(query, false, 8, cursor);
-    future.whenComplete(((result, throwable) -> {
-      if (throwable != null) {
-        if (throwable.getCause() instanceof TwitchApiException e) {
-          handleTwitchApiException(context, e);
-        } else {
-          context.getSource().sendFeedback(
-              Text.literal("検索できませんでした。")
-                  .setStyle(ERROR_STYLE));
-        }
-        return;
-      }
+    final String cursor = cursorValue;
+    CompletableFuture.supplyAsync(() -> TwitchApi.searchChannels(query, false, 8, cursor))
+        .whenComplete(((result, throwable) -> {
+          if (throwable != null) {
+            if (throwable.getCause() instanceof TwitchApiException e) {
+              handleTwitchApiException(context, e);
+            } else {
+              context.getSource().sendFeedback(
+                  Text.literal("検索できませんでした。")
+                      .setStyle(ERROR_STYLE));
+            }
+            return;
+          }
 
-      MutableText resultText = getSearchResultText(query, result);
-      context.getSource().sendFeedback(resultText);
-    }));
+          MutableText resultText = getSearchResultText(query, result);
+          context.getSource().sendFeedback(resultText);
+        }));
     return 1;
   }
 
