@@ -1,13 +1,16 @@
 package com.etw4s.twitchchatlink.twitch;
 
-import org.apache.http.HttpStatus;
-
 public class TwitchApiException extends RuntimeException {
   private final int status;
 
   TwitchApiException(int status) {
     super();
     this.status = status;
+  }
+
+  TwitchApiException(String message) {
+    super(message);
+    this.status = 0;
   }
 
   TwitchApiException(String message, int status) {

@@ -10,6 +10,7 @@ import com.google.gson.Gson;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.Arrays;
@@ -21,7 +22,7 @@ public class TwitchApi {
   private static final HttpClient client = HttpClient.newBuilder().build();
   private static final Gson gson = TwitchChatLinkGson.getGson();
 
-  public static CompletableFuture<GetUsersResult> getUsersByLogin(String[] logins) {
+  public static GetUsersResult getUsersByLogin(String[] logins) {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     HttpRequest request = HttpRequest.newBuilder().uri(URI.create(
         "https://api.twitch.tv/helix/users?" + String.join("&",
@@ -30,19 +31,26 @@ public class TwitchApi {
         .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID)
         .header("Content-Type", "application/json").GET().build();
 
-    return client.sendAsync(request, BodyHandlers.ofString()).thenApply(response -> switch (response.statusCode()) {
-      case HttpStatus.SC_OK -> {
-        var body = gson.fromJson(response.body(), GetUsersResponse.class);
-        var channels = Arrays.stream(body.data)
-            .map(u -> new TwitchChannel(u.id, u.login, u.displayName, LiveStatus.Unknown)).toList();
-        yield new GetUsersResult(channels);
-      }
-      case HttpStatus.SC_BAD_REQUEST ->
-        throw new TwitchApiException("Bad Request", HttpStatus.SC_BAD_REQUEST);
-      case HttpStatus.SC_UNAUTHORIZED ->
-        throw new TwitchApiException("Unauthorized", HttpStatus.SC_UNAUTHORIZED);
-      default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
-    });
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, BodyHandlers.ofString());
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new TwitchApiException("Failed to send request");
+    }
+
+    if (response.statusCode() == HttpStatus.SC_OK) {
+      var body = gson.fromJson(response.body(), GetUsersResponse.class);
+      var channels = Arrays.stream(body.data)
+          .map(u -> new TwitchChannel(u.id, u.login, u.displayName, LiveStatus.Unknown)).toList();
+      return new GetUsersResult(channels);
+    } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
+      throw new TwitchApiException("Bad Request");
+    } else if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
+      throw new TwitchApiException("Unauthorized");
+    } else {
+      throw new IllegalStateException("Unexpected value: " + response.statusCode());
+    }
   }
 
   public static CompletableFuture<CreateEventSubSubscriptionResult> createChannelChatMessageSubscription(
