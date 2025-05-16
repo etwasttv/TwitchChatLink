@@ -15,12 +15,14 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.net.http.WebSocket.Listener;
+import java.util.Map.Entry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
@@ -55,18 +57,16 @@ public class EventSubClient implements Listener {
     return result;
   }
 
-  public CompletableFuture<DeleteEventSubSubscriptionResult> unsubscribe(String login) {
-    var target = subscribes.entrySet().stream().filter(s -> s.getValue().login().equals(login))
+  public DeleteEventSubSubscriptionResult unsubscribe(String login) {
+    Optional<Entry<String, TwitchChannel>> target = subscribes.entrySet().stream()
+        .filter(s -> s.getValue().login().equals(login))
         .findFirst();
     if (target.isEmpty()) {
-      return CompletableFuture.completedFuture(
-          new DeleteEventSubSubscriptionResult());
+      return new DeleteEventSubSubscriptionResult();
     }
-    return TwitchApi.deleteEventSubSubscription(target.get().getKey())
-        .thenApply(result -> {
-          subscribes.remove(target.get().getKey());
-          return result;
-        });
+    DeleteEventSubSubscriptionResult result = TwitchApi.deleteEventSubSubscription(target.get().getKey());
+    subscribes.remove(target.get().getKey());
+    return result;
   }
 
   public List<TwitchChannel> getSubscribeList() {

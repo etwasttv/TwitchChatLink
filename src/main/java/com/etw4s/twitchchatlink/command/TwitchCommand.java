@@ -217,24 +217,26 @@ public class TwitchCommand {
     response.append(
         Text.literal("から切断します").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
     context.getSource().sendFeedback(response);
-    EventSubClient.getInstance().unsubscribe(login).whenComplete((result, throwable) -> {
-      if (throwable != null) {
-        if (throwable.getCause() instanceof TwitchApiException e) {
-          handleTwitchApiException(context, e);
-        } else {
-          context.getSource().sendFeedback(
-              Text.literal("エラーが発生しました").setStyle(ERROR_STYLE));
-        }
-        return;
-      }
-      var text = Text.empty();
-      text.append(
-          Text.literal(login)
-              .setStyle(PRIMARY_STYLE.withItalic(true)));
-      text.append(
-          Text.literal("から切断しました").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
-      context.getSource().sendFeedback(text);
-    });
+
+    CompletableFuture.supplyAsync(() -> EventSubClient.getInstance().unsubscribe(login))
+        .whenComplete((result, throwable) -> {
+          if (throwable != null) {
+            if (throwable.getCause() instanceof TwitchApiException e) {
+              handleTwitchApiException(context, e);
+            } else {
+              context.getSource().sendFeedback(
+                  Text.literal("エラーが発生しました").setStyle(ERROR_STYLE));
+            }
+            return;
+          }
+          var text = Text.empty();
+          text.append(
+              Text.literal(login)
+                  .setStyle(PRIMARY_STYLE.withItalic(true)));
+          text.append(
+              Text.literal("から切断しました").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+          context.getSource().sendFeedback(text);
+        });
 
     return 1;
   }

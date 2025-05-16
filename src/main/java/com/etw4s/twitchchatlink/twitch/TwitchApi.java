@@ -76,23 +76,23 @@ public class TwitchApi {
       throw new TwitchApiException("Failed to send request");
     }
 
-    if (response.statusCode() == HttpStatus.SC_OK) {
+    if (response.statusCode() == HttpStatus.SC_ACCEPTED) {
       var body = gson.fromJson(response.body(), CreateEventSubSubscriptionResponse.class);
       return new CreateEventSubSubscriptionResult(body.data[0].id, body.data[0].type);
     } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
-      throw new TwitchApiException("Bad Request");
+      throw new TwitchApiException("Bad Request", HttpStatus.SC_BAD_REQUEST);
     } else if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
-      throw new TwitchApiException("Unauthorized");
+      throw new TwitchApiException("Unauthorized", HttpStatus.SC_UNAUTHORIZED);
     } else if (response.statusCode() == HttpStatus.SC_FORBIDDEN) {
-      throw new TwitchApiException("Forbidden");
+      throw new TwitchApiException("Forbidden", HttpStatus.SC_FORBIDDEN);
     } else if (response.statusCode() == HttpStatus.SC_TOO_MANY_REQUESTS) {
-      throw new TwitchApiException("Too Many Requests");
+      throw new TwitchApiException("Too Many Requests", HttpStatus.SC_TOO_MANY_REQUESTS);
     } else {
       throw new IllegalStateException("Unexpected value: " + response.statusCode());
     }
   }
 
-  public static CompletableFuture<DeleteEventSubSubscriptionResult> deleteEventSubSubscription(
+  public static DeleteEventSubSubscriptionResult deleteEventSubSubscription(
       String subscriptionId) {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     var request = HttpRequest.newBuilder()
@@ -100,14 +100,25 @@ public class TwitchApi {
         .header("Authorization", "Bearer " + config.getToken())
         .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID).DELETE().build();
 
-    return client.sendAsync(request, BodyHandlers.ofString())
-        .thenApply(response -> switch (response.statusCode()) {
-          case HttpStatus.SC_NO_CONTENT -> new DeleteEventSubSubscriptionResult();
-          case HttpStatus.SC_BAD_REQUEST, HttpStatus.SC_UNAUTHORIZED,
-              HttpStatus.SC_NOT_FOUND ->
-            throw new TwitchApiException(response.statusCode());
-          default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
-        });
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, BodyHandlers.ofString());
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new TwitchApiException("Failed to send request");
+    }
+
+    if (response.statusCode() == HttpStatus.SC_NO_CONTENT) {
+      return new DeleteEventSubSubscriptionResult();
+    } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
+      throw new TwitchApiException("Bad Request", HttpStatus.SC_BAD_REQUEST);
+    } else if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
+      throw new TwitchApiException("Unauthorized", HttpStatus.SC_UNAUTHORIZED);
+    } else if (response.statusCode() == HttpStatus.SC_NOT_FOUND) {
+      throw new TwitchApiException("Not Found", HttpStatus.SC_NOT_FOUND);
+    } else {
+      throw new IllegalStateException("Unexpected value: " + response.statusCode());
+    }
   }
 
   public static CompletableFuture<GetEmoteSetResult> getEmoteSet(String emoteSetId) {
