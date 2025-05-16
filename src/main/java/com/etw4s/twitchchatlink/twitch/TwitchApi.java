@@ -4,9 +4,16 @@ import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.TwitchChatLinkContracts;
 import com.etw4s.twitchchatlink.model.TwitchChannel;
 import com.etw4s.twitchchatlink.model.TwitchChannel.LiveStatus;
+import com.etw4s.twitchchatlink.twitch.response.CreateEventSubSubscriptionResponse;
+import com.etw4s.twitchchatlink.twitch.response.GetEmoteSetResponse;
+import com.etw4s.twitchchatlink.twitch.response.GetUsersResponse;
+import com.etw4s.twitchchatlink.twitch.response.SearchChannelsResponse;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
 import com.google.gson.Gson;
+
+import net.fabricmc.loader.impl.util.log.Log;
+
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -14,13 +21,16 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.util.Arrays;
-import java.util.concurrent.CompletableFuture;
+import java.util.logging.Logger;
+
 import org.apache.http.HttpStatus;
 
 public class TwitchApi {
 
   private static final HttpClient client = HttpClient.newBuilder().build();
   private static final Gson gson = TwitchChatLinkGson.getGson();
+
+  private static final Logger LOGGER = Logger.getLogger(TwitchApi.class.getName());
 
   public static GetUsersResult getUsersByLogin(String[] logins) {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
@@ -55,6 +65,7 @@ public class TwitchApi {
 
   public static CreateEventSubSubscriptionResult createChannelChatMessageSubscription(
       String sessionId, TwitchChannel broadcaster) {
+    LOGGER.info("Creating EventSub subscription for channel: " + broadcaster.login());
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     var requestBody = new CreateEventSubSubscriptionRequest();
     requestBody.condition = new ChannelChatMessageCondition(broadcaster.id(), config.getUserId());
@@ -78,6 +89,7 @@ public class TwitchApi {
 
     if (response.statusCode() == HttpStatus.SC_ACCEPTED) {
       var body = gson.fromJson(response.body(), CreateEventSubSubscriptionResponse.class);
+      LOGGER.info("EventSub subscription created: " + body.data[0].id);
       return new CreateEventSubSubscriptionResult(body.data[0].id, body.data[0].type);
     } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
       throw new TwitchApiException("Bad Request", HttpStatus.SC_BAD_REQUEST);
@@ -121,7 +133,7 @@ public class TwitchApi {
     }
   }
 
-  public static CompletableFuture<GetEmoteSetResult> getEmoteSet(String emoteSetId) {
+  public static GetEmoteSetResult getEmoteSet(String emoteSetId) {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     var request = HttpRequest.newBuilder()
         .uri(URI.create("https://api.twitch.tv/helix/chat/emotes/set?emote_set_id=" + emoteSetId))
@@ -129,19 +141,26 @@ public class TwitchApi {
         .header("Client-Id", TwitchChatLinkContracts.TWITCH_CLIENT_ID)
         .header("Content-Type", "application/json").GET().build();
 
-    return client.sendAsync(request, BodyHandlers.ofString())
-        .thenApply(response -> switch (response.statusCode()) {
-          case HttpStatus.SC_OK -> {
-            var body = gson.fromJson(response.body(), GetEmoteSetResponse.class);
-            yield GetEmoteSetResult.success(emoteSetId, Arrays.stream(body.data).map(
-                d -> new TwitchEmoteInfo(d.id, d.name, d.format, d.scale, d.theme_mode,
-                    body.template))
-                .toList());
-          }
-          case HttpStatus.SC_BAD_REQUEST -> GetEmoteSetResult.badRequest(emoteSetId);
-          case HttpStatus.SC_UNAUTHORIZED -> GetEmoteSetResult.unauthorized(emoteSetId);
-          default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
-        });
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, BodyHandlers.ofString());
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new TwitchApiException("Failed to send request");
+    }
+
+    if (response.statusCode() == HttpStatus.SC_OK) {
+      var body = gson.fromJson(response.body(), GetEmoteSetResponse.class);
+      var emotes = Arrays.stream(body.data).map(d -> new TwitchEmoteInfo(d.id, d.name, d.format,
+          d.scale, d.theme_mode, body.template)).toList();
+      return GetEmoteSetResult.success(emoteSetId, emotes);
+    } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
+      return GetEmoteSetResult.badRequest(emoteSetId);
+    } else if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
+      return GetEmoteSetResult.unauthorized(emoteSetId);
+    } else {
+      throw new IllegalStateException("Unexpected value: " + response.statusCode());
+    }
   }
 
   public static SearchChannelsResult searchChannels(String query,

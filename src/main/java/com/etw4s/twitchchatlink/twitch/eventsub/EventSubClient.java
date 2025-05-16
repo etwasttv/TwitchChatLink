@@ -23,7 +23,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,20 +81,20 @@ public class EventSubClient implements Listener {
           .buildAsync(URI.create("wss://eventsub.wss.twitch.tv/ws"), this).thenAccept(ws -> {
             webSocket = ws;
             LOGGER.info("WebSocket is created");
-          });
+          }).join();
     }
   }
 
-  public CompletableFuture<Void> disconnect() {
+  public void disconnect() {
     synchronized (this) {
       if (webSocket == null) {
         LOGGER.info("WebSocket is already closed");
-        return CompletableFuture.completedFuture(null);
+        return;
       }
-      return webSocket.sendClose(1000, "Close").thenAccept(ws -> {
+      webSocket.sendClose(1000, "Close").thenAccept(ws -> {
         clear();
         LOGGER.info("WebSocket is closed");
-      });
+      }).join();
     }
   }
 
