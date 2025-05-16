@@ -30,6 +30,7 @@ public class TwitchCommand {
 
   private static final Style PRIMARY_STYLE = Style.EMPTY.withColor(Formatting.DARK_AQUA);
   private static final Style SECONDARY_STYLE = Style.EMPTY.withColor(Formatting.DARK_GRAY);
+  private static final Style TERTIARY_STYLE = Style.EMPTY.withColor(Formatting.GOLD);
   private static final Style SUCCESS_STYLE = Style.EMPTY.withColor(Formatting.GREEN);
   private static final Style ERROR_STYLE = Style.EMPTY.withColor(Formatting.RED);
 
@@ -88,9 +89,7 @@ public class TwitchCommand {
     var response = Text.empty();
     response.append(
         Text.literal(query + "の検索結果 ==========\n")
-            .setStyle(Style.EMPTY
-                .withBold(true)
-                .withColor(Formatting.GOLD)));
+            .setStyle(TERTIARY_STYLE.withBold(true)));
     var itr = result.channels().iterator();
     while (itr.hasNext()) {
       var data = itr.next();
@@ -204,7 +203,7 @@ public class TwitchCommand {
           var text = Text.empty();
           text.append(getClickableChannelText(target));
           text.append(Text.literal("をデフォルトの接続先に設定しました")
-              .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+              .setStyle(TERTIARY_STYLE));
           context.getSource().sendFeedback(text);
         }));
     return 1;
@@ -216,7 +215,7 @@ public class TwitchCommand {
     response.append(
         Text.literal(login).setStyle(PRIMARY_STYLE.withItalic(true)));
     response.append(
-        Text.literal("から切断します").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+        Text.literal("から切断します").setStyle(TERTIARY_STYLE));
     context.getSource().sendFeedback(response);
 
     CompletableFuture.supplyAsync(() -> EventSubClient.getInstance().unsubscribe(login))
@@ -235,7 +234,7 @@ public class TwitchCommand {
               Text.literal(login)
                   .setStyle(PRIMARY_STYLE.withItalic(true)));
           text.append(
-              Text.literal("から切断しました").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+              Text.literal("から切断しました").setStyle(TERTIARY_STYLE));
           context.getSource().sendFeedback(text);
         });
 
@@ -261,7 +260,7 @@ public class TwitchCommand {
             var response = Text.empty();
             response.append(Text.literal(login).setStyle(PRIMARY_STYLE));
             response.append(Text.literal("は見つかりませんでした")
-                .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+                .setStyle(TERTIARY_STYLE));
             context.getSource().sendFeedback(response);
             return;
           }
@@ -272,7 +271,7 @@ public class TwitchCommand {
     response.append(
         Text.literal(login).setStyle(PRIMARY_STYLE.withItalic(true)));
     response.append(
-        Text.literal("に接続します").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+        Text.literal("に接続します").setStyle(TERTIARY_STYLE));
     context.getSource().sendFeedback(response);
     return 1;
   }
@@ -294,7 +293,7 @@ public class TwitchCommand {
           var text = Text.empty();
           text.append(getClickableChannelText(target));
           text.append(Text.literal("のチャットが表示されます")
-              .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+              .setStyle(TERTIARY_STYLE));
           context.getSource().sendFeedback(text);
         });
   }
@@ -330,12 +329,12 @@ public class TwitchCommand {
     var subscribes = EventSubClient.getInstance().getSubscribeList();
     if (subscribes.isEmpty()) {
       var text = Text.literal("現在、接続しているチャンネルはありません")
-          .setStyle(Style.EMPTY.withColor(Formatting.GOLD));
+          .setStyle(TERTIARY_STYLE);
       context.getSource().sendFeedback(text);
     } else {
       var text = Text.empty();
       text.append(Text.literal("現在、以下のチャンネルに接続しています\n")
-          .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+          .setStyle(TERTIARY_STYLE));
       var itr = subscribes.iterator();
       while (itr.hasNext()) {
         var channel = itr.next();
