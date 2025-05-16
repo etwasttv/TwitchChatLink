@@ -25,6 +25,11 @@ import org.apache.http.HttpStatus;
 
 public class TwitchCommand {
 
+  private static final Style PRIMARY_STYLE = Style.EMPTY.withColor(Formatting.DARK_AQUA);
+  private static final Style SECONDARY_STYLE = Style.EMPTY.withColor(Formatting.DARK_GRAY);
+  private static final Style SUCCESS_STYLE = Style.EMPTY.withColor(Formatting.GREEN);
+  private static final Style ERROR_STYLE = Style.EMPTY.withColor(Formatting.RED);
+
   public void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
     dispatcher.register(ClientCommandManager.literal("twitch")
         .then(ClientCommandManager.literal("auth").executes(c -> this.authHandler(c)))
@@ -62,7 +67,7 @@ public class TwitchCommand {
         } else {
           context.getSource().sendFeedback(
               Text.literal("検索できませんでした。")
-                  .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+                  .setStyle(ERROR_STYLE));
         }
         return;
       }
@@ -86,8 +91,7 @@ public class TwitchCommand {
       var connect = Text.empty();
       connect.append(Text.literal("["));
       connect.append(Text.literal("接続")
-          .setStyle(Style.EMPTY
-              .withColor(Formatting.DARK_GREEN)
+          .setStyle(SUCCESS_STYLE
               .withBold(true)));
       connect.append(Text.literal("]"));
       connect.setStyle(Style.EMPTY
@@ -96,7 +100,7 @@ public class TwitchCommand {
                   Text.empty()
                       .append(Text.literal("クリックして"))
                       .append(Text.literal(data.displayName())
-                          .setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(true)))
+                          .setStyle(PRIMARY_STYLE.withItalic(true)))
                       .append(Text.literal("のチャットに接続する"))))
           .withClickEvent(
               new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/twitch connect " + data.login())));
@@ -104,13 +108,11 @@ public class TwitchCommand {
       response.append(" ");
       var channelInfo = Text.empty();
       channelInfo.append(
-          Text.literal(data.displayName()).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
-      channelInfo.append(Text.literal("(").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+          Text.literal(data.displayName()).setStyle(PRIMARY_STYLE));
+      channelInfo.append(Text.literal("(").setStyle(SECONDARY_STYLE));
       channelInfo.append(Text.literal(data.login())
-          .setStyle(Style.EMPTY
-              .withColor(Formatting.DARK_AQUA)
-              .withItalic(true)));
-      channelInfo.append(Text.literal(")").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+          .setStyle(PRIMARY_STYLE.withItalic(true)));
+      channelInfo.append(Text.literal(")").setStyle(SECONDARY_STYLE));
       channelInfo.setStyle(Style.EMPTY
           .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
               Text.empty()
@@ -206,7 +208,7 @@ public class TwitchCommand {
     String login = StringArgumentType.getString(context, "login");
     var response = Text.empty();
     response.append(
-        Text.literal(login).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(true)));
+        Text.literal(login).setStyle(PRIMARY_STYLE.withItalic(true)));
     response.append(
         Text.literal("から切断します").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
     context.getSource().sendFeedback(response);
@@ -216,14 +218,14 @@ public class TwitchCommand {
           handleTwitchApiException(context, e);
         } else {
           context.getSource().sendFeedback(
-              Text.literal("エラーが発生しました").setStyle(Style.EMPTY.withColor(Formatting.RED)));
+              Text.literal("エラーが発生しました").setStyle(ERROR_STYLE));
         }
         return;
       }
       var text = Text.empty();
       text.append(
           Text.literal(login)
-              .setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(true)));
+              .setStyle(PRIMARY_STYLE.withItalic(true)));
       text.append(
           Text.literal("から切断しました").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
       context.getSource().sendFeedback(text);
@@ -242,14 +244,14 @@ public class TwitchCommand {
         } else {
           context.getSource().sendFeedback(
               Text.literal("接続できませんでした。")
-                  .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+                  .setStyle(ERROR_STYLE));
         }
         return;
       }
       var users = getUsersResult.channels();
       if (users.isEmpty()) {
         var response = Text.empty();
-        response.append(Text.literal(login).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
+        response.append(Text.literal(login).setStyle(PRIMARY_STYLE));
         response.append(Text.literal("は見つかりませんでした")
             .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
         context.getSource().sendFeedback(response);
@@ -260,7 +262,7 @@ public class TwitchCommand {
     }));
     var response = Text.empty();
     response.append(
-        Text.literal(login).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(true)));
+        Text.literal(login).setStyle(PRIMARY_STYLE.withItalic(true)));
     response.append(
         Text.literal("に接続します").setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
     context.getSource().sendFeedback(response);
@@ -276,7 +278,7 @@ public class TwitchCommand {
         } else {
           context.getSource().sendFeedback(
               Text.literal("接続できませんでした。")
-                  .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+                  .setStyle(ERROR_STYLE));
         }
         return;
       }
@@ -293,15 +295,15 @@ public class TwitchCommand {
     switch (e.getStatus()) {
       case HttpStatus.SC_UNAUTHORIZED -> {
         context.getSource().sendFeedback(Text.literal("認証に失敗しました")
-            .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+            .setStyle(ERROR_STYLE));
         AuthManager authManager = new AuthManager();
         authManager.startAuth();
       }
       case HttpStatus.SC_BAD_REQUEST ->
         context.getSource().sendFeedback(Text.literal("リクエストが不正です")
-            .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+            .setStyle(ERROR_STYLE));
       default -> context.getSource().sendFeedback(Text.literal("エラーが発生しました")
-          .setStyle(Style.EMPTY.withColor(Formatting.RED)));
+          .setStyle(ERROR_STYLE));
     }
   }
 
@@ -343,7 +345,7 @@ public class TwitchCommand {
                     Text.empty()
                         .append(Text.literal("クリックして"))
                         .append(Text.literal(channel.displayName())
-                            .setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA).withItalic(true)))
+                            .setStyle(PRIMARY_STYLE.withItalic(true)))
                         .append(Text.literal("のチャットから切断する"))))
             .withClickEvent(
                 new ClickEvent(ClickEvent.Action.RUN_COMMAND,
@@ -364,13 +366,11 @@ public class TwitchCommand {
   private Text getClickableChannelText(TwitchChannel channel) {
     var channelInfo = Text.empty();
     channelInfo.append(
-        Text.literal(channel.displayName()).setStyle(Style.EMPTY.withColor(Formatting.DARK_AQUA)));
-    channelInfo.append(Text.literal("(").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+        Text.literal(channel.displayName()).setStyle(PRIMARY_STYLE));
+    channelInfo.append(Text.literal("(").setStyle(SECONDARY_STYLE));
     channelInfo.append(Text.literal(channel.login())
-        .setStyle(Style.EMPTY
-            .withColor(Formatting.DARK_AQUA)
-            .withItalic(true)));
-    channelInfo.append(Text.literal(")").setStyle(Style.EMPTY.withColor(Formatting.DARK_GRAY)));
+        .setStyle(PRIMARY_STYLE.withItalic(true)));
+    channelInfo.append(Text.literal(")").setStyle(SECONDARY_STYLE));
     channelInfo.setStyle(Style.EMPTY
         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
             Text.empty()
