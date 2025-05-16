@@ -6,22 +6,23 @@ import com.etw4s.twitchchatlink.model.ChatFragment;
 import com.etw4s.twitchchatlink.model.TwitchChannel;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchUser;
-import com.etw4s.twitchchatlink.twitch.CreateEventSubSubscriptionResult;
-import com.etw4s.twitchchatlink.twitch.DeleteEventSubSubscriptionResult;
-import com.etw4s.twitchchatlink.twitch.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.api.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.result.CreateEventSubSubscriptionResult;
+import com.etw4s.twitchchatlink.twitch.result.DeleteEventSubSubscriptionResult;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
 import com.google.gson.Gson;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.net.http.WebSocket.Listener;
+import java.util.Map.Entry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.Optional;
 import java.util.concurrent.CompletionStage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,62 +44,57 @@ public class EventSubClient implements Listener {
     return instance;
   }
 
-  public CompletableFuture<CreateEventSubSubscriptionResult> subscribe(TwitchChannel broadcaster) {
-    return connect().thenCompose((_v) -> {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      return TwitchApi.createChannelChatMessageSubscription(sessionId, broadcaster)
-          .thenApply(result -> {
-            subscribes.put(result.subscriptionId(), broadcaster);
-            return result;
-          });
-    });
+  public CreateEventSubSubscriptionResult subscribe(TwitchChannel broadcaster) {
+    connect();
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    CreateEventSubSubscriptionResult result = TwitchApi.createChannelChatMessageSubscription(sessionId, broadcaster);
+    subscribes.put(result.subscriptionId(), broadcaster);
+    return result;
   }
 
-  public CompletableFuture<DeleteEventSubSubscriptionResult> unsubscribe(String login) {
-    var target = subscribes.entrySet().stream().filter(s -> s.getValue().login().equals(login))
+  public DeleteEventSubSubscriptionResult unsubscribe(String login) {
+    Optional<Entry<String, TwitchChannel>> target = subscribes.entrySet().stream()
+        .filter(s -> s.getValue().login().equals(login))
         .findFirst();
     if (target.isEmpty()) {
-      return CompletableFuture.completedFuture(
-          new DeleteEventSubSubscriptionResult());
+      return new DeleteEventSubSubscriptionResult();
     }
-    return TwitchApi.deleteEventSubSubscription(target.get().getKey())
-        .thenApply(result -> {
-          subscribes.remove(target.get().getKey());
-          return result;
-        });
+    DeleteEventSubSubscriptionResult result = TwitchApi.deleteEventSubSubscription(target.get().getKey());
+    subscribes.remove(target.get().getKey());
+    return result;
   }
 
   public List<TwitchChannel> getSubscribeList() {
     return new ArrayList<>(subscribes.values());
   }
 
-  private CompletableFuture<Void> connect() {
+  private void connect() {
     synchronized (this) {
       if (webSocket != null) {
-        return CompletableFuture.completedFuture(null);
+        return;
       }
-      return httpClient.newWebSocketBuilder()
+      httpClient.newWebSocketBuilder()
           .buildAsync(URI.create("wss://eventsub.wss.twitch.tv/ws"), this).thenAccept(ws -> {
             webSocket = ws;
             LOGGER.info("WebSocket is created");
-          });
+          }).join();
     }
   }
 
-  public CompletableFuture<Void> disconnect() {
+  public void disconnect() {
     synchronized (this) {
       if (webSocket == null) {
         LOGGER.info("WebSocket is already closed");
-        return CompletableFuture.completedFuture(null);
+        return;
       }
-      return webSocket.sendClose(1000, "Close").thenAccept(ws -> {
+      webSocket.sendClose(1000, "Close").thenAccept(ws -> {
         clear();
         LOGGER.info("WebSocket is closed");
-      });
+      }).join();
     }
   }
 

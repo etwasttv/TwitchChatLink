@@ -1,4 +1,4 @@
-package com.etw4s.twitchchatlink.twitch;
+package com.etw4s.twitchchatlink.twitch.result;
 
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import java.util.List;
@@ -8,7 +8,7 @@ public class GetEmoteSetResult {
   String emoteSetId;
   Status status;
 
-  static GetEmoteSetResult success(String emoteSetId, List<TwitchEmoteInfo> infos) {
+  public static GetEmoteSetResult success(String emoteSetId, List<TwitchEmoteInfo> infos) {
     var result = new GetEmoteSetResult();
     result.emoteInfos = infos;
     result.emoteSetId = emoteSetId;
@@ -16,14 +16,14 @@ public class GetEmoteSetResult {
     return result;
   }
 
-  static GetEmoteSetResult badRequest(String emoteSetId) {
+  public static GetEmoteSetResult badRequest(String emoteSetId) {
     var result = new GetEmoteSetResult();
     result.status = Status.BadRequest;
     result.emoteSetId = emoteSetId;
     return result;
   }
 
-  static GetEmoteSetResult unauthorized(String emoteSetId) {
+  public static GetEmoteSetResult unauthorized(String emoteSetId) {
     var result = new GetEmoteSetResult();
     result.status = Status.Unauthorized;
     result.emoteSetId = emoteSetId;

@@ -9,8 +9,9 @@ import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
 import com.etw4s.twitchchatlink.model.StaticEmoji;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
-import com.etw4s.twitchchatlink.twitch.GetEmoteSetResult.Status;
-import com.etw4s.twitchchatlink.twitch.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.api.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.result.GetEmoteSetResult.Status;
+
 import java.awt.AlphaComposite;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
@@ -48,9 +49,9 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
   private static final int MIN_UNICODE = 0xE000;
   private static final int MAX_UNICODE = 0xF8FF;
   private static int offset = 0;
-  //  Emoji.Name -> BaseEmoji
+  // Emoji.Name -> BaseEmoji
   private final Map<String, BaseEmoji> emojis = Collections.synchronizedMap(new HashMap<>());
-  //  Unicode -> Emoji.Name
+  // Unicode -> Emoji.Name
   private final Map<String, String> unicodeMap = Collections.synchronizedMap(new HashMap<>());
   private long last = 0;
   private static final ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -111,13 +112,14 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
         .collect(Collectors.toSet());
     var emoteSetIds = emotes.stream().map(ChatFragment::getEmoteSetId).collect(Collectors.toSet());
 
-    emoteSetIds.forEach(emoteSetId -> TwitchApi.getEmoteSet(emoteSetId).thenAccept(result -> {
+    emoteSetIds.forEach(emoteSetId -> {
+      var result = TwitchApi.getEmoteSet(emoteSetId);
       if (result.getStatus() == Status.Success) {
         result.getEmoteInfos().stream()
             .filter(info -> emotes.stream().anyMatch(e -> info.id().equals(e.getEmoteId())))
             .forEach(info -> executor.submit(new EmoteLoader(info)));
       }
-    }));
+    });
   }
 
   public synchronized String getOrMappingUnicode(String name) {
@@ -213,8 +215,6 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
             var g = canvas.createGraphics();
             g.drawImage(currentFrame, pos[0], pos[1], null);
 
-
-
             try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
               ImageIO.write(canvas, "png", output);
               NativeImage image = NativeImage.read(output.toByteArray());
@@ -225,7 +225,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
             switch (disposalMethod) {
               case DoNotDispose -> {
               }
-              case Nothing, RestoreToBackground ->{
+              case Nothing, RestoreToBackground -> {
                 g.setComposite(AlphaComposite.Clear);
                 g.fillRect(0, 0, canvas.getWidth(), canvas.getHeight());
                 g.setComposite(AlphaComposite.SrcOver);
@@ -297,8 +297,10 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
           nativeFormat);
 
       // "GraphicControlExtension" ノードを探す
-      javax.imageio.metadata.IIOMetadataNode graphicControlExtension = (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName(
-          "GraphicControlExtension").item(0);
+      javax.imageio.metadata.IIOMetadataNode graphicControlExtension = (javax.imageio.metadata.IIOMetadataNode) root
+          .getElementsByTagName(
+              "GraphicControlExtension")
+          .item(0);
 
       if (graphicControlExtension == null) {
         return DisposableMethod.Nothing;
@@ -329,22 +331,21 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
           nativeFormat);
 
       // "ImageDescriptor" ノードを探す
-      javax.imageio.metadata.IIOMetadataNode imageDescriptor =
-          (javax.imageio.metadata.IIOMetadataNode) root.getElementsByTagName("ImageDescriptor")
-              .item(0);
+      javax.imageio.metadata.IIOMetadataNode imageDescriptor = (javax.imageio.metadata.IIOMetadataNode) root
+          .getElementsByTagName("ImageDescriptor")
+          .item(0);
 
       if (imageDescriptor == null) {
-        return new int[]{0, 0};
+        return new int[] { 0, 0 };
       }
 
       // 座標情報を取得
       int leftPosition = Integer.parseInt(imageDescriptor.getAttribute("imageLeftPosition"));
       int topPosition = Integer.parseInt(imageDescriptor.getAttribute("imageTopPosition"));
 
-      return new int[]{leftPosition, topPosition};
+      return new int[] { leftPosition, topPosition };
     }
   }
-
 
   @Override
   public void onStartTick(ClientWorld clientWorld) {
