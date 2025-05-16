@@ -12,8 +12,6 @@ import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
 import com.google.gson.Gson;
 
-import net.fabricmc.loader.impl.util.log.Log;
-
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
