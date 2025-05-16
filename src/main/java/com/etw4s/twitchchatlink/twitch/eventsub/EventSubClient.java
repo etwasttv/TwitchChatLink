@@ -43,19 +43,16 @@ public class EventSubClient implements Listener {
     return instance;
   }
 
-  public CompletableFuture<CreateEventSubSubscriptionResult> subscribe(TwitchChannel broadcaster) {
-    return connect().thenCompose((_v) -> {
-      try {
-        Thread.sleep(1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      return TwitchApi.createChannelChatMessageSubscription(sessionId, broadcaster)
-          .thenApply(result -> {
-            subscribes.put(result.subscriptionId(), broadcaster);
-            return result;
-          });
-    });
+  public CreateEventSubSubscriptionResult subscribe(TwitchChannel broadcaster) {
+    connect();
+    try {
+      Thread.sleep(1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    CreateEventSubSubscriptionResult result = TwitchApi.createChannelChatMessageSubscription(sessionId, broadcaster);
+    subscribes.put(result.subscriptionId(), broadcaster);
+    return result;
   }
 
   public CompletableFuture<DeleteEventSubSubscriptionResult> unsubscribe(String login) {
@@ -76,12 +73,12 @@ public class EventSubClient implements Listener {
     return new ArrayList<>(subscribes.values());
   }
 
-  private CompletableFuture<Void> connect() {
+  private void connect() {
     synchronized (this) {
       if (webSocket != null) {
-        return CompletableFuture.completedFuture(null);
+        return;
       }
-      return httpClient.newWebSocketBuilder()
+      httpClient.newWebSocketBuilder()
           .buildAsync(URI.create("wss://eventsub.wss.twitch.tv/ws"), this).thenAccept(ws -> {
             webSocket = ws;
             LOGGER.info("WebSocket is created");

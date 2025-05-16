@@ -53,7 +53,7 @@ public class TwitchApi {
     }
   }
 
-  public static CompletableFuture<CreateEventSubSubscriptionResult> createChannelChatMessageSubscription(
+  public static CreateEventSubSubscriptionResult createChannelChatMessageSubscription(
       String sessionId, TwitchChannel broadcaster) {
     TwitchChatLinkConfig config = new TwitchChatLinkConfig();
     var requestBody = new CreateEventSubSubscriptionRequest();
@@ -68,18 +68,28 @@ public class TwitchApi {
         .header("Content-Type", "application/json")
         .POST(BodyPublishers.ofString(gson.toJson(requestBody))).build();
 
-    return client.sendAsync(request, BodyHandlers.ofString()).thenApply(response -> switch (response.statusCode()) {
-      case HttpStatus.SC_ACCEPTED -> {
-        var body = gson.fromJson(response.body(), CreateEventSubSubscriptionResponse.class);
-        yield new CreateEventSubSubscriptionResult(body.data[0].id, body.data[0].type);
-      }
-      case HttpStatus.SC_BAD_REQUEST,
-          HttpStatus.SC_UNAUTHORIZED,
-          HttpStatus.SC_FORBIDDEN,
-          HttpStatus.SC_TOO_MANY_REQUESTS ->
-        throw new TwitchApiException(response.statusCode());
-      default -> throw new IllegalStateException("Unexpected value: " + response.statusCode());
-    });
+    HttpResponse<String> response;
+    try {
+      response = client.send(request, BodyHandlers.ofString());
+    } catch (Exception e) {
+      e.printStackTrace();
+      throw new TwitchApiException("Failed to send request");
+    }
+
+    if (response.statusCode() == HttpStatus.SC_OK) {
+      var body = gson.fromJson(response.body(), CreateEventSubSubscriptionResponse.class);
+      return new CreateEventSubSubscriptionResult(body.data[0].id, body.data[0].type);
+    } else if (response.statusCode() == HttpStatus.SC_BAD_REQUEST) {
+      throw new TwitchApiException("Bad Request");
+    } else if (response.statusCode() == HttpStatus.SC_UNAUTHORIZED) {
+      throw new TwitchApiException("Unauthorized");
+    } else if (response.statusCode() == HttpStatus.SC_FORBIDDEN) {
+      throw new TwitchApiException("Forbidden");
+    } else if (response.statusCode() == HttpStatus.SC_TOO_MANY_REQUESTS) {
+      throw new TwitchApiException("Too Many Requests");
+    } else {
+      throw new IllegalStateException("Unexpected value: " + response.statusCode());
+    }
   }
 
   public static CompletableFuture<DeleteEventSubSubscriptionResult> deleteEventSubSubscription(

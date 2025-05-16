@@ -276,23 +276,24 @@ public class TwitchCommand {
 
   private void connect(CommandContext<FabricClientCommandSource> context,
       TwitchChannel target) {
-    EventSubClient.getInstance().subscribe(target).whenComplete((result, throwable) -> {
-      if (throwable != null) {
-        if (throwable.getCause() instanceof TwitchApiException e) {
-          handleTwitchApiException(context, e);
-        } else {
-          context.getSource().sendFeedback(
-              Text.literal("接続できませんでした。")
-                  .setStyle(ERROR_STYLE));
-        }
-        return;
-      }
-      var text = Text.empty();
-      text.append(getClickableChannelText(target));
-      text.append(Text.literal("のチャットが表示されます")
-          .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
-      context.getSource().sendFeedback(text);
-    });
+    CompletableFuture.supplyAsync(() -> EventSubClient.getInstance().subscribe(target))
+        .whenComplete((result, throwable) -> {
+          if (throwable != null) {
+            if (throwable.getCause() instanceof TwitchApiException e) {
+              handleTwitchApiException(context, e);
+            } else {
+              context.getSource().sendFeedback(
+                  Text.literal("接続できませんでした。")
+                      .setStyle(ERROR_STYLE));
+            }
+            return;
+          }
+          var text = Text.empty();
+          text.append(getClickableChannelText(target));
+          text.append(Text.literal("のチャットが表示されます")
+              .setStyle(Style.EMPTY.withColor(Formatting.GOLD)));
+          context.getSource().sendFeedback(text);
+        });
   }
 
   private void handleTwitchApiException(CommandContext<FabricClientCommandSource> context,
