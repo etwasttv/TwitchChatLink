@@ -30,6 +30,8 @@ public class TwitchCommand {
   private static final Style SUCCESS_STYLE = Style.EMPTY.withColor(Formatting.GREEN);
   private static final Style ERROR_STYLE = Style.EMPTY.withColor(Formatting.RED);
 
+  private final AuthManager authManager = new AuthManager();
+
   public void register(CommandDispatcher<FabricClientCommandSource> dispatcher, CommandRegistryAccess registryAccess) {
     dispatcher.register(ClientCommandManager.literal("twitch")
         .then(ClientCommandManager.literal("auth").executes(c -> this.authHandler(c)))
@@ -296,7 +298,6 @@ public class TwitchCommand {
       case HttpStatus.SC_UNAUTHORIZED -> {
         context.getSource().sendFeedback(Text.literal("認証に失敗しました")
             .setStyle(ERROR_STYLE));
-        AuthManager authManager = new AuthManager();
         authManager.startAuth();
       }
       case HttpStatus.SC_BAD_REQUEST ->
@@ -308,7 +309,6 @@ public class TwitchCommand {
   }
 
   private int authHandler(CommandContext<FabricClientCommandSource> context) {
-    AuthManager authManager = new AuthManager();
     authManager.startAuth();
     return 1;
   }
