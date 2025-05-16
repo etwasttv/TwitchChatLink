@@ -1,4 +1,4 @@
-package com.etw4s.twitchchatlink.twitch;
+package com.etw4s.twitchchatlink.twitch.api;
 
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.model.TwitchChannel;
@@ -10,6 +10,11 @@ import com.etw4s.twitchchatlink.twitch.response.CreateEventSubSubscriptionRespon
 import com.etw4s.twitchchatlink.twitch.response.GetEmoteSetResponse;
 import com.etw4s.twitchchatlink.twitch.response.GetUsersResponse;
 import com.etw4s.twitchchatlink.twitch.response.SearchChannelsResponse;
+import com.etw4s.twitchchatlink.twitch.result.CreateEventSubSubscriptionResult;
+import com.etw4s.twitchchatlink.twitch.result.DeleteEventSubSubscriptionResult;
+import com.etw4s.twitchchatlink.twitch.result.GetEmoteSetResult;
+import com.etw4s.twitchchatlink.twitch.result.GetUsersResult;
+import com.etw4s.twitchchatlink.twitch.result.SearchChannelsResult;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
 import com.etw4s.twitchchatlink.util.TwitchChatLinkGson;
 import com.google.gson.Gson;

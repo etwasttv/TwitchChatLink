@@ -1,4 +1,4 @@
-package com.etw4s.twitchchatlink.twitch;
+package com.etw4s.twitchchatlink.twitch.api;
 
 public class TwitchApiException extends RuntimeException {
   private final int status;

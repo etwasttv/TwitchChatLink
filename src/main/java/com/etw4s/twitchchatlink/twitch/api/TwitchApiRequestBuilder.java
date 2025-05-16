@@ -1,4 +1,4 @@
-package com.etw4s.twitchchatlink.twitch;
+package com.etw4s.twitchchatlink.twitch.api;
 
 import java.net.http.HttpRequest;
 

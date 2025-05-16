@@ -2,11 +2,11 @@ package com.etw4s.twitchchatlink.command;
 
 import com.etw4s.twitchchatlink.TwitchChatLinkConfig;
 import com.etw4s.twitchchatlink.model.TwitchChannel;
-import com.etw4s.twitchchatlink.twitch.SearchChannelsResult;
-import com.etw4s.twitchchatlink.twitch.TwitchApi;
-import com.etw4s.twitchchatlink.twitch.TwitchApiException;
+import com.etw4s.twitchchatlink.twitch.api.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.api.TwitchApiException;
 import com.etw4s.twitchchatlink.twitch.auth.AuthManager;
 import com.etw4s.twitchchatlink.twitch.eventsub.EventSubClient;
+import com.etw4s.twitchchatlink.twitch.result.SearchChannelsResult;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;

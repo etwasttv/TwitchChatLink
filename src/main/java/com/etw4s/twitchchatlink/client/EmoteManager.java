@@ -9,8 +9,9 @@ import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
 import com.etw4s.twitchchatlink.model.StaticEmoji;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
-import com.etw4s.twitchchatlink.twitch.GetEmoteSetResult.Status;
-import com.etw4s.twitchchatlink.twitch.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.api.TwitchApi;
+import com.etw4s.twitchchatlink.twitch.result.GetEmoteSetResult.Status;
+
 import java.awt.AlphaComposite;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
