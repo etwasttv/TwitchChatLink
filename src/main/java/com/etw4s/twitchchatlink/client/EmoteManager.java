@@ -46,15 +46,13 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(TwitchChatLink.MOD_NAME);
   private static final EmoteManager instance = new EmoteManager();
-  private static final int MIN_UNICODE = 0xE000;
-  private static final int MAX_UNICODE = 0xF8FF;
-  private static int offset = 0;
   // Emoji.Name -> BaseEmoji
   private final Map<String, BaseEmoji> emojis = Collections.synchronizedMap(new HashMap<>());
   // Unicode -> Emoji.Name
   private final Map<String, String> unicodeMap = Collections.synchronizedMap(new HashMap<>());
   private long last = 0;
   private static final ExecutorService executor = Executors.newFixedThreadPool(2);
+  private final UnicodeProvider unicodeProvider = new UnicodeProvider();
 
   public static EmoteManager getInstance() {
     return instance;
@@ -98,14 +96,6 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
     return unicodeMap.get(unicode) != null;
   }
 
-  public synchronized static String getNextUnicode() {
-    String unicode = new String(Character.toChars(MIN_UNICODE + offset++));
-    if (MIN_UNICODE + offset > MAX_UNICODE) {
-      offset = 0;
-    }
-    return unicode;
-  }
-
   @Override
   public void onReceive(TwitchChat chat) {
     var emotes = chat.getFragments().stream().filter(f -> f.getType() == ChatFragmentType.Emote)
@@ -130,7 +120,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
       return unicodeOptional.get().getKey();
     }
 
-    var unicode = getNextUnicode();
+    var unicode = unicodeProvider.getNextUnicode();
     unicodeMap.put(unicode, name);
     return unicode;
   }
