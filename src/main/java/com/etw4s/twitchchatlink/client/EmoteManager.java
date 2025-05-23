@@ -5,7 +5,6 @@ import com.etw4s.twitchchatlink.event.TwitchChatEvent.TwitchChatListener;
 import com.etw4s.twitchchatlink.model.AnimatedEmoji;
 import com.etw4s.twitchchatlink.model.BaseEmoji;
 import com.etw4s.twitchchatlink.model.ChatFragment;
-import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
 import com.etw4s.twitchchatlink.model.StaticEmoji;
 import com.etw4s.twitchchatlink.model.TwitchChat;
 import com.etw4s.twitchchatlink.model.TwitchEmoteInfo;
@@ -98,18 +97,18 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
 
   @Override
   public void onReceive(TwitchChat chat) {
-    var emotes = chat.getFragments().stream().filter(f -> f.getType() == ChatFragmentType.Emote)
-        .collect(Collectors.toSet());
-    var emoteSetIds = emotes.stream().map(ChatFragment::getEmoteSetId).collect(Collectors.toSet());
-
-    emoteSetIds.forEach(emoteSetId -> {
-      var result = TwitchApi.getEmoteSet(emoteSetId);
-      if (result.getStatus() == Status.Success) {
-        result.getEmoteInfos().stream()
-            .filter(info -> emotes.stream().anyMatch(e -> info.id().equals(e.getEmoteId())))
-            .forEach(info -> executor.submit(new EmoteLoader(info)));
-      }
-    });
+    var emotes = chat.getEmotes();
+    emotes.stream()
+        .map(ChatFragment::getEmoteSetId)
+        .collect(Collectors.toSet())
+        .forEach(emoteSetId -> {
+          var result = TwitchApi.getEmoteSet(emoteSetId);
+          if (result.getStatus() == Status.Success) {
+            result.getEmoteInfos().stream()
+                .filter(info -> emotes.stream().anyMatch(e -> info.id().equals(e.getEmoteId())))
+                .forEach(info -> executor.submit(new EmoteLoader(info)));
+          }
+        });
   }
 
   public synchronized String getOrMappingUnicode(String name) {

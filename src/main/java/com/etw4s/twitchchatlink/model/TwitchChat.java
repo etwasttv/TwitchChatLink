@@ -1,6 +1,10 @@
 package com.etw4s.twitchchatlink.model;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
 
 public class TwitchChat {
 
@@ -38,5 +42,10 @@ public class TwitchChat {
 
   public String getColor() {
     return color;
+  }
+
+  public Set<ChatFragment> getEmotes() {
+    return getFragments().stream().filter(f -> f.getType() == ChatFragmentType.Emote)
+        .collect(Collectors.toSet());
   }
 }
