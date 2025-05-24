@@ -1,5 +1,6 @@
 package com.etw4s.twitchchatlink.client;
 
+import com.etw4s.twitchchatlink.emote.EmoteManager;
 import com.etw4s.twitchchatlink.event.TwitchChatEvent.TwitchChatListener;
 import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
 import com.etw4s.twitchchatlink.model.TwitchChat;

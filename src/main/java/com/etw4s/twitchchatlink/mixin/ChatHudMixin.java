@@ -1,7 +1,7 @@
 package com.etw4s.twitchchatlink.mixin;
 
 import com.etw4s.twitchchatlink.DrawContextExtension;
-import com.etw4s.twitchchatlink.client.EmoteManager;
+import com.etw4s.twitchchatlink.emote.EmoteManager;
 import com.etw4s.twitchchatlink.model.BaseEmoji;
 import java.util.ArrayList;
 import java.util.HashSet;

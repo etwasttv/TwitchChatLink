@@ -1,4 +1,4 @@
-package com.etw4s.twitchchatlink.client;
+package com.etw4s.twitchchatlink.emote;
 
 public class UnicodeProvider {
     private static final int MIN_UNICODE = 0xE000;
