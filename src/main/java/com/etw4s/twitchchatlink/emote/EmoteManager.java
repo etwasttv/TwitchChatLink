@@ -155,7 +155,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
 
     private StaticEmoji loadStaticEmote(TwitchEmoteInfo info) {
       try {
-        URL url = URI.create(info.getUrl("static", null, null)).toURL();
+        URL url = info.getUrl("static", null, null);
         try (InputStream input = url.openStream()) {
           NativeImage image = NativeImage.read(input);
           NativeImageBackedTexture texture = new NativeImageBackedTexture(image);
@@ -174,7 +174,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
 
     private AnimatedEmoji loadAnimatedEmote(TwitchEmoteInfo info) {
       try {
-        URL url = URI.create(info.getUrl("animated", null, null)).toURL();
+        URL url = info.getUrl("animated", null, null);
         try (ImageInputStream input = ImageIO.createImageInputStream(url.openStream())) {
           Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("gif");
           if (!readers.hasNext()) {
