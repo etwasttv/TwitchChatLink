@@ -139,7 +139,7 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
         return;
       }
       BaseEmoji emoji;
-      if (Arrays.asList(info.format()).contains("animated")) {
+      if (info.isAnimated()) {
         emoji = loadAnimatedEmote(info);
       } else {
         emoji = loadStaticEmote(info);
