@@ -71,10 +71,10 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
 
   public void applyUsingUnicode(Set<String> unicode) {
     LOGGER.debug("{} Unicode are used", unicode.size());
-    var unusedUnicodeMap = unicodeMap.entrySet().stream()
+    var unusedUnicodes = unicodeMap.entrySet().stream()
         .filter(entry -> !unicode.contains(entry.getKey())).collect(Collectors.toSet());
-    LOGGER.debug("{} Unicode are not used", unusedUnicodeMap.size());
-    unusedUnicodeMap.forEach(unused -> {
+    LOGGER.debug("{} Unicode are not used", unusedUnicodes.size());
+    unusedUnicodes.forEach(unused -> {
       var emoji = emojis.get(unused.getValue());
       if (emoji == null) {
         return;

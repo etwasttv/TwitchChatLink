@@ -161,7 +161,7 @@ public abstract class ChatHudMixin {
                   if (name != null) {
                     BaseEmoji emote = EmoteManager.getInstance().getEmojiByUnicode(str);
                     if (emote != null) {
-                      //  Emoji are already loaded
+                      // Emoji are already loaded
                       Identifier id = emote.getIdentifier();
                       try {
                         ((DrawContextExtension) context).twitchChatLink$drawTexture(id, tailX - o / 4,
@@ -172,10 +172,11 @@ public abstract class ChatHudMixin {
                       }
                       tailX += o;
                     } else {
-                      //  Emoji are loading
+                      // Emoji are loading
                       tailX = context.drawTextWithShadow(client.textRenderer,
                           Text.literal(name).setStyle(Style.EMPTY.withColor(
-                              Formatting.GRAY)), tailX, y,
+                              Formatting.GRAY)),
+                          tailX, y,
                           ColorHelper.Argb.withAlpha(u, -1));
                     }
                     isAfterEmote = true;
@@ -204,7 +205,7 @@ public abstract class ChatHudMixin {
           context.fill(-2, 0, k + 4, 9, t << 24);
           context.getMatrices().translate(0.0F, 0.0F, 50.0F);
           context.drawTextWithShadow(this.client.textRenderer,
-              Text.translatable("chat.queue", new Object[]{ac}), 0, 1, 16777215 + (ad << 24));
+              Text.translatable("chat.queue", new Object[] { ac }), 0, 1, 16777215 + (ad << 24));
           context.getMatrices().pop();
         }
 
