@@ -2,6 +2,7 @@ package com.etw4s.twitchchatlink.mixin;
 
 import com.etw4s.twitchchatlink.DrawContextExtension;
 import com.etw4s.twitchchatlink.emote.EmoteManager;
+import com.etw4s.twitchchatlink.emote.UnicodeMapper;
 import com.etw4s.twitchchatlink.model.BaseEmoji;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -32,6 +33,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ChatHud.class)
 public abstract class ChatHudMixin {
+
+  private final UnicodeMapper unicodeMapper = new UnicodeMapper();
 
   @Shadow
   protected abstract boolean isChatHidden();
@@ -157,7 +160,7 @@ public abstract class ChatHudMixin {
                 boolean isAfterEmote = false;
                 for (Text text : texts) {
                   String str = text.getString();
-                  String name = EmoteManager.getInstance().getNameByUnicode(str);
+                  String name = unicodeMapper.getNameByUnicode(str);
                   if (name != null) {
                     BaseEmoji emote = EmoteManager.getInstance().getEmojiByUnicode(str);
                     if (emote != null) {
@@ -253,12 +256,12 @@ public abstract class ChatHudMixin {
 
       for (var text : texts) {
         String str = text.getString();
-        if (EmoteManager.getInstance().IsUsedUnicode(str)) {
+        if (unicodeMapper.IsUsedUnicode(str)) {
           usingUnicode.add(str);
         }
       }
     }
 
-    EmoteManager.getInstance().applyUsingUnicode(usingUnicode);
+    EmoteManager.getInstance().applyUsingEmotes(usingUnicode);
   }
 }

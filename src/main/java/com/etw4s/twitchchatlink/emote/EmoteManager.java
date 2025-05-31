@@ -46,10 +46,9 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
   // Emoji.Name -> BaseEmoji
   private final Map<String, BaseEmoji> emojis = Collections.synchronizedMap(new HashMap<>());
   // Unicode -> Emoji.Name
-  private final Map<String, String> unicodeMap = Collections.synchronizedMap(new HashMap<>());
   private long last = 0;
   private static final ExecutorService executor = Executors.newFixedThreadPool(2);
-  private final UnicodeProvider unicodeProvider = new UnicodeProvider();
+  private final UnicodeMapper unicodeMapper = new UnicodeMapper();
 
   public static EmoteManager getInstance() {
     return instance;
@@ -60,18 +59,15 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
   }
 
   public BaseEmoji getEmojiByUnicode(String unicode) {
-    String name = getNameByUnicode(unicode);
+    String name = unicodeMapper.getNameByUnicode(unicode);
     if (name == null) {
       return null;
     }
     return emojis.get(name);
   }
 
-  public void applyUsingUnicode(Set<String> unicode) {
-    LOGGER.debug("{} Unicode are used", unicode.size());
-    var unusedUnicodes = unicodeMap.entrySet().stream()
-        .filter(entry -> !unicode.contains(entry.getKey())).collect(Collectors.toSet());
-    LOGGER.debug("{} Unicode are not used", unusedUnicodes.size());
+  public void applyUsingEmotes(Set<String> unicode) {
+    var unusedUnicodes = unicodeMapper.detectUnusedUnicode(unicode);
     unusedUnicodes.forEach(unused -> {
       var emoji = emojis.get(unused.getValue());
       if (emoji == null) {
@@ -80,17 +76,8 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
       for (Identifier identifier : emoji.getAllIdentifiers()) {
         MinecraftClient.getInstance().getTextureManager().destroyTexture(identifier);
       }
-      unicodeMap.remove(unused.getKey());
       emojis.remove(emoji.getName());
     });
-  }
-
-  public String getNameByUnicode(String unicode) {
-    return unicodeMap.get(unicode);
-  }
-
-  public boolean IsUsedUnicode(String unicode) {
-    return unicodeMap.get(unicode) != null;
   }
 
   @Override
@@ -107,19 +94,6 @@ public class EmoteManager implements TwitchChatListener, StartWorldTick {
                 .forEach(info -> executor.submit(new EmoteLoader(info)));
           }
         });
-  }
-
-  public synchronized String getOrMappingUnicode(String name) {
-    var unicodeOptional = unicodeMap.entrySet().stream()
-        .filter(entry -> entry.getValue().equals(name)).findFirst();
-
-    if (unicodeOptional.isPresent()) {
-      return unicodeOptional.get().getKey();
-    }
-
-    var unicode = unicodeProvider.getNextUnicode();
-    unicodeMap.put(unicode, name);
-    return unicode;
   }
 
   static class EmoteLoader implements Runnable {

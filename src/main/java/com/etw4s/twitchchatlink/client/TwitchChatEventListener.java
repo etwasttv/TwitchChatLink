@@ -1,6 +1,7 @@
 package com.etw4s.twitchchatlink.client;
 
 import com.etw4s.twitchchatlink.emote.EmoteManager;
+import com.etw4s.twitchchatlink.emote.UnicodeMapper;
 import com.etw4s.twitchchatlink.event.TwitchChatEvent.TwitchChatListener;
 import com.etw4s.twitchchatlink.model.ChatFragment.ChatFragmentType;
 import com.etw4s.twitchchatlink.model.TwitchChat;
@@ -13,6 +14,8 @@ import net.minecraft.util.Formatting;
 
 public class TwitchChatEventListener implements
     TwitchChatListener {
+
+  private final UnicodeMapper unicodeMapper = new UnicodeMapper();
 
   @Override
   public void onReceive(TwitchChat chat) {
@@ -32,7 +35,7 @@ public class TwitchChatEventListener implements
           ? Style.EMPTY.withColor(Formatting.GRAY)
           : Style.EMPTY.withColor(Formatting.WHITE);
       String t = fragment.getType() == ChatFragmentType.Emote
-          ? EmoteManager.getInstance().getOrMappingUnicode(fragment.getText())
+          ? unicodeMapper.getUnicode(fragment.getText())
           : fragment.getText();
       text.append(Text.literal(t).setStyle(style));
     }
